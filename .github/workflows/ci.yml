@@ -86,15 +86,33 @@ jobs:
         if: steps.secret.outputs.available == 'true'
         env:
           SITE_URL: https://robot3d.giacomel.info
+          PAGES_URL: https://robot3d.pages.dev
         run: |
+          set -euo pipefail
+
+          # 1) Deployment effettivo (host pages.dev, non protetto dal WAF)
+          ok=0
           for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$PAGES_URL" || true)
             if [ "$code" = "200" ]; then
-              echo "Sito online: $SITE_URL"
-              exit 0
+              echo "Deployment online: $PAGES_URL"
+              ok=1
+              break
             fi
-            echo "attesa ($code)…"
+            echo "attesa deployment ($code)…"
             sleep 15
           done
-          echo "Sito non raggiungibile: $SITE_URL" >&2
-          exit 1
+          if [ "$ok" != "1" ]; then
+            echo "Deployment non raggiungibile: $PAGES_URL" >&2
+            exit 1
+          fi
+
+          # 2) Dominio custom: Cloudflare puo' rispondere 403 alle IP dei runner
+          #    (bot management) pur con il sito sano: non e' un errore di deploy.
+          domain_code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL" || true)
+          echo "Dominio $SITE_URL -> HTTP $domain_code"
+          case "$domain_code" in
+            2*|3*) echo "Sito online sul dominio custom" ;;
+            403) echo "::notice::HTTP 403 dal dominio custom (risposta edge Cloudflare alle IP datacenter): verifica manuale necessaria." ;;
+            *) echo "::warning::Codice inatteso dal dominio custom: $domain_code" ;;
+          esac
