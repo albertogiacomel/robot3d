@@ -10,7 +10,7 @@
   "linked_site": "https://www.giacomel.info/",
   "published": {
     "repository": "https://github.com/albertogiacomel/robot3d",
-    "pages": "https://albertogiacomel.github.io/robot3d/",
+    "pages": "https://robot3d.giacomel.info (Cloudflare Pages) · mirror https://albertogiacomel.github.io/robot3d/ (GitHub Pages)",
     "site_entry": "Sezione 'Experiments' di giacomel.info (voce Robot 3D, EN + IT)"
   },
   "description": {
@@ -27,7 +27,8 @@
       "Immagine originale del disegno recuperata dal database della sessione (opencode.db, base64) e ottimizzata (WebP 900px, 71 KB).",
       "Pubblicazione: repository GitHub creato via API, workflow GitHub Pages (.github/workflows/pages.yml) con build_type=workflow, sito verificato online (HTTP 200 su index, css, js, vendor, assets).",
       "Link su giacomel.info: nuova voce 'Robot 3D' nella sezione Experiments (contents/hobbies.ts, EN + IT) con immagine in public/images/experiments/robot3d.webp.",
-      "Sostituzione di SSAOPass con N8AOPass 2.0.1 (vendorizzato in vendor/n8ao, import 'postprocessing' ricablato su three/addons): un solo passaggio con denoise bilaterale, -49% di draw call e -50% di triangoli a parita di resa delle occlusioni."
+      "Sostituzione di SSAOPass con N8AOPass 2.0.1 (vendorizzato in vendor/n8ao, import 'postprocessing' ricablato su three/addons): un solo passaggio con denoise bilaterale, -49% di draw call e -50% di triangoli a parita di resa delle occlusioni.",
+      "Pubblicazione Cloudflare Pages: helper OAuth PKCE con finestra 15 minuti (wrangler login scade dopo 120 s) e scambio token form-encoded; progetto Pages 'robot3d' creato via API; deploy di dist/ (38 file, 2.16 s); dominio robot3d.giacomel.info aggiunto via API con CNAME automatico; workflow CI con skip pulito se il secret CLOUDFLARE_API_TOKEN non e presente."
     ],
     "evidence": [
       "npm run verify -> 14/14 controlli superati (nessun errore console, camminata, risata, presa/posa scatola, reset, demo, preset camera)",
@@ -36,7 +37,8 @@
       "Sito live https://albertogiacomel.github.io/robot3d/ -> HTTP 200; risorse verificate: site.css, robot.js, site.js, vendor/three/three.module.js, assets/drawing-original.webp",
       "Screenshot in artifacts/ (verify, poses, demo, site) e assets/story-*.png per la sezione storia",
       "Commit Robot3D: 6ef1f2e (feature) + 702336a (trigger deploy); commit website: in corso",
-      "N8AO: 271 draw call / 142.3k tri (prima SSAO: 535 / 284.6k); npm run verify 14/14 anche dopo la migrazione"
+      "N8AO: 271 draw call / 142.3k tri (prima SSAO: 535 / 284.6k); npm run verify 14/14 anche dopo la migrazione",
+      "Cloudflare: robot3d.pages.dev HTTP 200 (38 file caricati); dominio robot3d.giacomel.info status=pending (certificato Google in provisioning)"
     ]
   },
   "benchmark": {
@@ -93,32 +95,32 @@
       "title": "Sostituire SSAOPass con N8AO o un bake di AO",
       "impact": "medium",
       "ease": "medium",
-      "problem": "SSAOPass porta i draw call da 152 a 535 per il re-render di depth e normali.",
-      "proposal": "Valutare N8AO (un solo pass, qualita migliore) o un bake statico dell'AO dato che la scena e nota a priori."
+      "problem": "Risolto: SSAOPass portava i draw call a 535 (re-render depth+normals).",
+      "proposal": "Fatto: N8AOPass 2.0.1 vendorizzato, 271 draw call / 142.3k tri (-49%/-50%), import 'postprocessing' ricablato su three/addons."
     },
     {
       "rank": 2,
       "title": "Sottocampagna personalizzata per il sito",
       "impact": "medium",
       "ease": "low",
-      "problem": "Il progetto e pubblicato su GitHub Pages, non su un sottodominio giacomel.info come gli altri esperimenti.",
-      "proposal": "Creare robot3d.giacomel.info (Cloudflare Pages o un worker di redirect) mantenendo GitHub Pages come fallback."
+      "problem": "Il progetto era su GitHub Pages, non allineato agli altri esperimenti del portfolio.",
+      "proposal": "Fatto: robot3d.giacomel.info su Cloudflare Pages (progetto 'robot3d', account 291702df5c8eef8684918f4f92ca4c4d), GitHub Pages mantenuto come mirror."
     },
     {
       "rank": 3,
-      "title": "Controller persisti e ranking",
+      "title": "Secret CLOUDFLARE_API_TOKEN nel repository",
+      "impact": "medium",
+      "ease": "low",
+      "problem": "Il job deploy Cloudflare in CI resta skippato finche il secret non e impostato (il token OAuth locale scade e non va bene per la CI).",
+      "proposal": "Creare un token API Cloudflare (Account: Cloudflare Pages: Edit + Zone: DNS: Edit su giacomel.info) e impostarlo come secret del repository albertogiacomel/robot3d."
+    },
+    {
+      "rank": 4,
+      "title": "Controller persisti e obiettivi di gioco",
       "impact": "low",
       "ease": "medium",
       "problem": "La scena non ha obiettivi ne punteggi: il giocatore puo solo muoversi e raccogliere la scatola.",
       "proposal": "Aggiungere obiettivi (porta la scatola in un punto, raccogli 3 scatole) con punteggio e best score in localStorage."
-    },
-    {
-      "rank": 4,
-      "title": "Editor dei colori in runtime",
-      "impact": "low",
-      "ease": "low",
-      "problem": "La palette e fissa nel sorgente.",
-      "proposal": "Esporre una tavolozza regolabile da GUI e serializzarla in localStorage, riusando lo shell bilingue gia presente."
     },
     {
       "rank": 5,
