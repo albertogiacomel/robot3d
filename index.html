@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Robot 3D: ricostruzione del disegno a mano con Three.js, geometria 100% procedurale." />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%238a8a8a'/%3E%3Ccircle cx='22' cy='26' r='7' fill='%230d0d0d'/%3E%3Ccircle cx='42' cy='26' r='7' fill='%230d0d0d'/%3E%3Crect x='14' y='40' width='36' height='11' rx='5' fill='%23f4f4f2'/%3E%3Cpath d='M26 40v11M38 40v11' stroke='%230d0d0d' stroke-width='2'/%3E%3Cpath d='M32 8V2M32 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z' fill='%230d0d0d'/%3E%3C/svg%3E"
+    />
+    <title>Robot 3D · Three.js</title>
+    <style>
+      :root {
+        --bg: #f3efe6;
+        --ink: #24211c;
+        --muted: #6c6459;
+        --panel: rgba(255, 253, 248, 0.82);
+        --line: rgba(36, 33, 28, 0.14);
+        --accent: #3c74b0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+      }
+
+      #scene {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        touch-action: none;
+      }
+
+      .hud {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        width: min(310px, calc(100vw - 36px));
+        padding: 16px 18px 14px;
+        background: var(--panel);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 12px 32px rgba(36, 33, 28, 0.12);
+      }
+
+      .hud h1 {
+        margin: 0 0 2px;
+        font-size: 17px;
+        letter-spacing: 0.2px;
+      }
+
+      .hud p {
+        margin: 0 0 12px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      button {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+        font: inherit;
+        font-size: 12px;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+      }
+
+      button:hover {
+        background: #fff;
+        border-color: rgba(36, 33, 28, 0.3);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button.is-on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      .hint {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .select-wrap select {
+        flex: 1 1 auto;
+        padding: 7px 9px;
+        font: inherit;
+        font-size: 12px;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        cursor: pointer;
+      }
+
+      .legend {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px 10px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        border: 1px solid rgba(36, 33, 28, 0.25);
+        flex: 0 0 auto;
+      }
+
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        font-size: 14px;
+        color: var(--muted);
+        transition: opacity 0.4s ease;
+      }
+
+      #boot.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      @media (max-width: 640px) {
+        .hud {
+          width: calc(100vw - 36px);
+          padding: 12px 14px;
+        }
+        .legend {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <section class="hud" aria-label="Controlli del modello 3D">
+      <h1>Robot 3D</h1>
+      <p>
+        Ricostruzione del disegno a mano: testa a televisore, antenne a sfera, braccia a pinza
+        “C” in posizione V, torso blu con quadrante rosso e pannello a 4 pulsanti.
+        Geometria 100% procedurale (Three.js), nessuna texture.
+      </p>
+
+      <div class="row">
+        <button id="btn-rotate" type="button">Rotazione</button>
+        <button id="btn-outline" type="button">Contorni</button>
+        <button id="btn-flat" type="button">Flat shading</button>
+        <button id="btn-reset" type="button">Reimposta</button>
+      </div>
+
+      <div class="row" style="margin-top: 7px">
+        <label class="select-wrap" for="view-select">
+          <span>Vista</span>
+          <select id="view-select">
+            <option value="front">Frontale</option>
+            <option value="hero">3/4</option>
+            <option value="side">Laterale</option>
+            <option value="back">Posteriore</option>
+            <option value="closeup">Primo piano testa</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span><i class="swatch" style="background:#8a8a8a"></i>Testa grigia</span>
+        <span><i class="swatch" style="background:#5e9ed7"></i>Torso blu</span>
+        <span><i class="swatch" style="background:#d24f4a"></i>Quadrante / pinze</span>
+        <span><i class="swatch" style="background:#cdc3e6"></i>Cosce lavanda</span>
+        <span><i class="swatch" style="background:#e8df87"></i>Tibia gialla</span>
+        <span><i class="swatch" style="background:#bdd08a"></i>Bandeggio verde</span>
+      </div>
+
+      <div class="hint">
+        Trascina per ruotare · rotella per lo zoom · doppio click per resettare la vista<br />
+        <span id="stat-tri"></span>
+      </div>
+    </section>
+
+    <div id="boot">Caricamento modello…</div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+    <script type="module" src="./robot.js"></script>
+    <script>
+      // Nasconde l'overlay di avvio quando il modulo ha montato la scena.
+      window.addEventListener('load', () => {
+        requestAnimationFrame(() => {
+          const boot = document.getElementById('boot');
+          if (boot) {
+            boot.classList.add('hidden');
+            setTimeout(() => boot.remove(), 500);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

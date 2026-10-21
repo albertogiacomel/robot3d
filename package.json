@@ -1,0 +1,12 @@
+{
+  "name": "robot3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Modello 3D del robot da disegno, costruito con Three.js (geometria procedurale)",
+  "scripts": {
+    "start": "python -m http.server 8123",
+    "check": "node --check robot.js"
+  },
+  "license": "MIT"
+}
