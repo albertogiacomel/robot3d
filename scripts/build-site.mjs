@@ -4,20 +4,21 @@
  *   node scripts/build-site.mjs
  */
 
-import { cp, mkdir, rm, writeFile, stat } from 'node:fs/promises';
+import { cp, mkdir, rm, writeFile, stat, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { resolve, join } from 'node:path';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\//, '')), '..');
-const DIST = path.join(ROOT, 'dist');
+// import.meta.dirname e Node >= 20.11 (CI: Node 22, locale: Node 26)
+const ROOT = resolve(import.meta.dirname, '..');
+const DIST = join(ROOT, 'dist');
 
 const FILES = ['index.html', 'robot.js', 'robot-actions.js', 'site.js', 'site.css'];
 const DIRS = ['assets', 'vendor'];
 
 async function dirSize(dir) {
   let total = 0;
-  for (const entry of await (await import('node:fs/promises')).readdir(dir, { withFileTypes: true })) {
-    const p = path.join(dir, entry.name);
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
     if (entry.isDirectory()) total += await dirSize(p);
     else total += (await stat(p)).size;
   }
@@ -28,19 +29,20 @@ await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST, { recursive: true });
 
 for (const file of FILES) {
-  const src = path.join(ROOT, file);
+  const src = join(ROOT, file);
   if (!existsSync(src)) throw new Error(`file mancante: ${file}`);
-  await cp(src, path.join(DIST, file));
+  await cp(src, join(DIST, file));
 }
 
 for (const dir of DIRS) {
-  const src = path.join(ROOT, dir);
+  const src = join(ROOT, dir);
   if (!existsSync(src)) throw new Error(`cartella mancante: ${dir}`);
-  await cp(src, path.join(DIST, dir), { recursive: true });
+  await cp(src, join(DIST, dir), { recursive: true });
 }
 
 // Nessun processed Jekyll/underscore da interpretare
-await writeFile(path.join(DIST, '.nojekyll'), '');
+await writeFile(join(DIST, '.nojekyll'), '');
 
 const bytes = await dirSize(DIST);
 console.log(`dist/ pronto — ${FILES.length} file + ${DIRS.length} cartelle, ${(bytes / 1024 / 1024).toFixed(2)} MB`);
+
