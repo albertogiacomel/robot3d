@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Modello 3D del robot da disegno, costruito con Three.js (geometria procedurale)",
+  "description": "Robot 3D: un disegno a mano diventa un videogioco (Three.js, geometria procedurale)",
   "scripts": {
-    "poses": "node scripts/capture-poses.mjs",
+    "start": "python -m http.server 8123",
+    "build": "node scripts/build-site.mjs",
     "check": "node --check robot.js && node --check robot-actions.js && node --check site.js",
     "verify": "node scripts/verify-actions.mjs",
     "capture": "node scripts/capture-story.mjs",
+    "poses": "node scripts/capture-poses.mjs",
     "demo": "node scripts/capture-demo.mjs",
-    "start": "python -m http.server 8123"
+    "deploy": "npm run build && npx --yes wrangler@4.151.3 pages deploy dist --project-name robot3d --branch main"
   },
   "license": "MIT",
   "devDependencies": {

@@ -5,6 +5,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Output delle build statiche (Cloudflare Pages / GitHub Pages)
+dist/
+
 # Schermate di sviluppo (non versionate: rigenerabili con npm run capture)
 artifacts/poses/
 artifacts/demo/

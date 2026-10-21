@@ -4,7 +4,7 @@ Un disegno a mano diventa un videogioco 3D: il robot del foglio è ricostruito c
 **geometria 100% procedurale** (Three.js), poi dotato di controller, animazioni e regia
 cinematografica.
 
-- **Live:** https://albertogiacomel.github.io/robot3d/
+- **Live:** https://robot3d.giacomel.info (Cloudflare Pages) — mirror: https://albertogiacomel.github.io/robot3d/ (GitHub Pages)
 - **Repository:** https://github.com/albertogiacomel/robot3d
 - **Sito:** https://www.giacomel.info/
 
@@ -46,6 +46,22 @@ La libreria è vendorizzata in `vendor/three/` (three r160 + `OrbitControls`,
 `RoundedBoxGeometry`, `EffectComposer`, `SSAOPass`, `RoomEnvironment`): **nessuna richiesta
 di rete a runtime**, il sito funziona offline.
 
+## Deploy
+
+```bash
+npm run build     # assembla dist/
+npm run deploy    # wrangler pages deploy (richiede CLOUDFLARE_API_TOKEN)
+```
+
+- **Cloudflare Pages** — progetto `robot3d` (account `291702df5c8eef8684918f4f92ca4c4d`),
+  dominio `robot3d.giacomel.info` (CNAME creato da Cloudflare).
+- **GitHub Pages** — workflow `.github/workflows/pages.yml`, mirror di fallback.
+- **CI** — `.github/workflows/ci.yml`: verify → build → deploy Cloudflare (salta se il
+  secret `CLOUDFLARE_API_TOKEN` non è impostato nel repository) → smoke test sul dominio.
+
+> Per il deploy in CI serve un token API Cloudflare (Account → Cloudflare Pages → Edit,
+> Zone → DNS → Edit su `giacomel.info`) memorizzato come secret del repository.
+
 ## Struttura
 
 ```
@@ -55,10 +71,11 @@ Robot3D/
 ├── site.js               # tema chiaro/scuro + bilingue IT/EN
 ├── robot.js              # scena, costruzione procedurale, luci, ombre, camera director
 ├── robot-actions.js      # input, macchina a stati, IK, audio
+├── wrangler.toml         # progetto Cloudflare Pages (output dist/)
+├── scripts/              # build-site, verify-actions, capture-*
 ├── assets/               # immagine originale + schermate della storia + font
-├── scripts/              # verify-actions, capture-poses, capture-demo, capture-story
 ├── vendor/three/         # three r160 vendorizzato
-└── .github/workflows/    # deploy GitHub Pages
+└── .github/workflows/    # CI (verify + deploy) e GitHub Pages
 ```
 
 ## Resa 3D
