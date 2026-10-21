@@ -65,7 +65,9 @@ Robot3D/
 
 - **Ombre:** una sola sorgente (key light) con frustum stretto che segue il robot: ombre
   definite e coerenti in tutta l'area di gioco.
-- **Occlusioni:** SSAO (`SSAOPass`) per il contatto fra le parti, senza ombre "flottanti".
+- **Occlusioni:** **N8AO** (`n8ao` 2.0.1 vendorizzato) calcola l'occlusione ambientale in un
+  solo passaggio con denoise bilaterale: qualità migliore e **-49% di draw call** rispetto a
+  `SSAOPass` (271 draw call / 142k tri vs 535 / 285k).
 - **Materiali:** PBR con env map `RoomEnvironment` a intensità controllata per materiale.
 - **Temi:** chiaro e scuro, con la scena 3D che segue il tema (fondo, pavimento, luci).
 

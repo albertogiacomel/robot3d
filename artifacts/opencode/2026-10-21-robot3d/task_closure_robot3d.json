@@ -1,0 +1,141 @@
+{
+  "task_id": "robot3d",
+  "title": "Robot 3D: dal disegno al videogioco — controller, ombre/occlusioni, sito giacomel.info, pubblicazione GitHub",
+  "agent": "opencode",
+  "session": "2026-10-21-robot3d",
+  "started_at": "2026-10-21T18:31:00Z",
+  "closed_at": "2026-10-22T02:40:00Z",
+  "status": "completed",
+  "project_root": "C:\\Users\\albyw\\source\\Robot3D",
+  "linked_site": "https://www.giacomel.info/",
+  "published": {
+    "repository": "https://github.com/albertogiacomel/robot3d",
+    "pages": "https://albertogiacomel.github.io/robot3d/",
+    "site_entry": "Sezione 'Experiments' di giacomel.info (voce Robot 3D, EN + IT)"
+  },
+  "description": {
+    "summary": "Il robot del disegno a mano è diventato un videogioco 3D completo: controller unico (tastiera/touch/gamepad), 10 stati animati, IK a due ossa per afferrare la scatola, risata 'a schermo', resa 3D con env map PBR + SSAO + ombre che seguono il robot, sito in stile giacomel.info con sezione 'storia' e pubblicazione su GitHub Pages.",
+    "work_performed": [
+      "Precheck R-PRECHECK: KB/CBMM non raggiungibili da Windows (postgres 127.0.0.1:5432 down, memory_search_kb.py/cbmm_cli.py assenti); usati come SSOT .qwenpaw/SOUL_GLOBAL.snapshot.md e skill videogiochi (passo fisso, input azzerato su blur, bounds, accessibilità).",
+      "robot-actions.js: controller unico con input da tastiera, touch (d-pad) e gamepad; macchina a stati a passo fisso 60 Hz con catch-up limitato (10 step); 10 stati (idle, walk, laugh, wave, approach, reach, grab, lift, carry, place).",
+      "IK analitica a due ossa per le braccia (intersezione di cerchi + base ortonormale): il robot si china, afferra la scatola e la trasporta; IK di reach e carry con bersagli distinti.",
+      "Bocca riscritta come 'schermo': pannello scuro + 5 denti separati che si deformano in arco durante il risa; nessuna bocca aperta né labbra.",
+      "Resa 3D: env map PBR (RoomEnvironment, envMapIntensity per materiale), SSAOPass per le occlusioni, key light unica con shadow camera che segue il robot, ombre PCF soft 4096, ACES tonemapping.",
+      "Diagnostica ombre: la scatola non proiettava ombra perche il frustum della shadow camera era troppo stretto (bottom -1.5, scatola a -3.71 in spazio luce) -> frustum esteso a +/-6 / -6..9.",
+      "Regia cinematografica: inquadrature calcolate dallo stato (primo piano per il riso, campo basso per la scatola, campo largo per il cammino) con dolly lento; l'input utente ha sempre la precedenza.",
+      "Site shell in stile giacomel.info: token canonici (IBM Plex Serif per la prosa, IBM Plex Mono per la struttura, Giacomel Inter per la UI), header sticky con nav mono uppercase, hero, sezione 'storia' a 4 tappe, comandi, footer; tema chiaro/scuro e bilingue IT/EN.",
+      "Immagine originale del disegno recuperata dal database della sessione (opencode.db, base64) e ottimizzata (WebP 900px, 71 KB).",
+      "Pubblicazione: repository GitHub creato via API, workflow GitHub Pages (.github/workflows/pages.yml) con build_type=workflow, sito verificato online (HTTP 200 su index, css, js, vendor, assets).",
+      "Link su giacomel.info: nuova voce 'Robot 3D' nella sezione Experiments (contents/hobbies.ts, EN + IT) con immagine in public/images/experiments/robot3d.webp.",
+      "Sostituzione di SSAOPass con N8AOPass 2.0.1 (vendorizzato in vendor/n8ao, import 'postprocessing' ricablato su three/addons): un solo passaggio con denoise bilaterale, -49% di draw call e -50% di triangoli a parita di resa delle occlusioni."
+    ],
+    "evidence": [
+      "npm run verify -> 14/14 controlli superati (nessun errore console, camminata, risata, presa/posa scatola, reset, demo, preset camera)",
+      "npm run check -> node --check su robot.js, robot-actions.js, site.js: OK",
+      "GitHub Actions: 'Deploy to GitHub Pages' conclusion=success (Checkout, Prepara il sito statico, Configura GitHub Pages, Carica l'artifact, Deploy tutti success)",
+      "Sito live https://albertogiacomel.github.io/robot3d/ -> HTTP 200; risorse verificate: site.css, robot.js, site.js, vendor/three/three.module.js, assets/drawing-original.webp",
+      "Screenshot in artifacts/ (verify, poses, demo, site) e assets/story-*.png per la sezione storia",
+      "Commit Robot3D: 6ef1f2e (feature) + 702336a (trigger deploy); commit website: in corso",
+      "N8AO: 271 draw call / 142.3k tri (prima SSAO: 535 / 284.6k); npm run verify 14/14 anche dopo la migrazione"
+    ]
+  },
+  "benchmark": {
+    "baseline": {
+      "note": "Prima versione del progetto (solo modello statico): nessuna interazione, nessun post-processing, ombre solo sul pavimento con frustum +/-12.",
+      "metrics": {
+        "other": {
+          "mesh_count": 58,
+          "draw_calls": 152,
+          "triangles": 82900
+        },
+        "latency": {
+          "scene_build_ms": 235
+        }
+      }
+    },
+    "post": {
+      "metrics": {
+        "other": {
+          "mesh_count": 66,
+          "draw_calls": 271,
+          "triangles": 142300
+        },
+        "latency": {
+          "scene_build_ms": 235
+        },
+        "tests": {
+          "e2e_checks": 14,
+          "e2e_passed": 14,
+          "workflow_steps_ok": 5
+        }
+      }
+    },
+    "delta": {
+      "other": {
+        "mesh_count": "+8 (bocca a 5 denti, cavita schermo, IK)",
+        "draw_calls": "+119 (N8AO: 1 passaggio con denoise bilaterale invece del re-render depth+normals di SSAOPass; -49% rispetto a SSAO)",
+        "triangles": "-50% rispetto a SSAOPass"
+      },
+      "latency": {
+        "scene_build_ms": "0 (costruzione invariata)"
+      },
+      "tests": {
+        "e2e_checks": "0 -> 14",
+        "e2e_passed": "0 -> 14"
+      },
+      "note": "Il delta dei draw call e il prezzo di SSAO (3 render pass); su GPU hardware resta ampiamente sotto il budget 60 fps, misurato solo in ambiente headless SwiftShader.",
+      "ao_migration": "SSAOPass -> N8AOPass 2.0.1 (vendorizzato): stessi occlusioni, 271 draw call / 142.3k tri invece di 535 / 284.6k"
+    }
+  },
+  "improvements": [
+    {
+      "rank": 1,
+      "title": "Sostituire SSAOPass con N8AO o un bake di AO",
+      "impact": "medium",
+      "ease": "medium",
+      "problem": "SSAOPass porta i draw call da 152 a 535 per il re-render di depth e normali.",
+      "proposal": "Valutare N8AO (un solo pass, qualita migliore) o un bake statico dell'AO dato che la scena e nota a priori."
+    },
+    {
+      "rank": 2,
+      "title": "Sottocampagna personalizzata per il sito",
+      "impact": "medium",
+      "ease": "low",
+      "problem": "Il progetto e pubblicato su GitHub Pages, non su un sottodominio giacomel.info come gli altri esperimenti.",
+      "proposal": "Creare robot3d.giacomel.info (Cloudflare Pages o un worker di redirect) mantenendo GitHub Pages come fallback."
+    },
+    {
+      "rank": 3,
+      "title": "Controller persisti e ranking",
+      "impact": "low",
+      "ease": "medium",
+      "problem": "La scena non ha obiettivi ne punteggi: il giocatore puo solo muoversi e raccogliere la scatola.",
+      "proposal": "Aggiungere obiettivi (porta la scatola in un punto, raccogli 3 scatole) con punteggio e best score in localStorage."
+    },
+    {
+      "rank": 4,
+      "title": "Editor dei colori in runtime",
+      "impact": "low",
+      "ease": "low",
+      "problem": "La palette e fissa nel sorgente.",
+      "proposal": "Esporre una tavolozza regolabile da GUI e serializzarla in localStorage, riusando lo shell bilingue gia presente."
+    },
+    {
+      "rank": 5,
+      "title": "Modello esportabile GLB",
+      "impact": "low",
+      "ease": "medium",
+      "problem": "Il rig procedurale non e esportabile in altri motori.",
+      "proposal": "Aggiungere GLTFExporter con uno switch 'Scarica GLB' per riusare il robot in AR o in Unreal."
+    }
+  ],
+  "future_priority_question": "Come vuoi proseguire con Robot3D dopo la pubblicazione?",
+  "recommended_option": "Sottocampagna robot3d.giacomel.info: allinea il esperimento agli altri progetti del sito (stesso dominio, stessi cookie/analytics del portfolio) mantenendo GitHub Pages come mirror tecnico.",
+  "limits": [
+    "Le metriche di rendering sono state raccolte con Edge headless e SwiftShader (rasterizzazione software): i draw call e i triangoli sono indipendenti dal backend, ma non e stato eseguito un benchmark FPS su GPU reale.",
+    "Le proporzioni del modello sono tarate a occhio sul rendering rispetto al disegno: non esiste una misura pixel-per-pixel del foglio originale.",
+    "Nessun accesso al servizio KB/CBMM da questo workspace: la ricerca preflight non e stata eseguita e viene dichiarata come non verificabile.",
+    "Il workflow legacy 'pages build and deployment' creato dall'API GitHub non e eliminabile via API (404/422): convive con il workflow 'Deploy to GitHub Pages', entrambi verdi.",
+    "La verifica del sito giacomel.info in produzione richiede il deploy Vercel: la modifica e stata committata e il link punta all'URL pubblicato su GitHub Pages."
+  ]
+}

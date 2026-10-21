@@ -283,6 +283,18 @@ code {
   padding-left: 0;
   font-weight: 650;
   white-space: nowrap;
+  gap: 10px;
+}
+
+/* Favicon del portfolio nel link alla home, come nel sito */
+.site-header [data-site-home] img,
+.site-footer [data-site-home] img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  max-width: none;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .site-header [data-portfolio-nav] {

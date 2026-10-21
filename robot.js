@@ -23,9 +23,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { N8AOPass } from 'n8ao';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createRobotActions } from './robot-actions.js';
 
@@ -181,17 +180,23 @@ rim.position.set(-2, 7, -10);
 scene.add(rim);
 
 /* ------------------------------------------------------------------ *
- * Pipeline di post-processing: RenderPass -> SSAO -> OutputPass
+ * Pipeline di post-processing: N8AO (occlusioni) + OutputPass
+ *
+ * N8AO sostituisce il RenderPass: calcola l'occlusione ambientale in un
+ * solo passaggio con denoise bilaterale, quindi meno draw call di SSAOPass
+ * (che richiedeva un re-render di depth e normali).
  * ------------------------------------------------------------------ */
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
 
-const ssao = new SSAOPass(scene, camera, canvas.clientWidth, canvas.clientHeight);
-ssao.kernelRadius = 0.35;
-ssao.minDistance = 0.002;
-ssao.maxDistance = 0.18;
-ssao.output = SSAOPass.OUTPUT.Default;
-composer.addPass(ssao);
+const n8ao = new N8AOPass(scene, camera, canvas.clientWidth, canvas.clientHeight);
+n8ao.configuration.aoRadius = 0.6; // raggio di campionamento in unita mondo
+n8ao.configuration.distanceFalloff = 1;
+n8ao.configuration.intensity = 1.9;
+n8ao.configuration.color = new THREE.Color(0x000000);
+n8ao.configuration.denoiseRadius = 14;
+n8ao.configuration.denoiseSamples = 8;
+n8ao.configuration.gammaCorrection = false; // la correzione gamma e gestita da OutputPass
+composer.addPass(n8ao);
 composer.addPass(new OutputPass());
 
 // Pavimento
@@ -850,7 +855,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
   composer.setSize(w, h);
-  ssao.setSize(w, h);
+  n8ao.setSize(w, h);
 }
 
 // Il canvas cambia dimensione con il layout (griglia, responsive)

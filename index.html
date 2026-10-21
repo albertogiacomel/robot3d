@@ -26,7 +26,8 @@
     <header class="site-header">
       <div class="site-shell-inner">
         <a class="site-home" href="https://www.giacomel.info/" aria-label="Torna alla home">
-          giacomel.info
+          <img src="./assets/favicon.svg" width="32" height="32" alt="" />
+          <span>giacomel.info</span>
         </a>
 
         <nav data-portfolio-nav aria-label="Navigazione principale">
@@ -300,7 +301,10 @@
     <!-- ============================ FOOTER ============================ -->
     <footer class="site-footer">
       <nav class="site-shell-inner" aria-label="Navigazione del piè di pagina">
-        <a href="https://www.giacomel.info/" data-site-home>giacomel.info</a>
+        <a href="https://www.giacomel.info/" data-site-home>
+          <img src="./assets/favicon.svg" width="32" height="32" alt="" />
+          <span>giacomel.info</span>
+        </a>
         <div class="site-privacy-links">
           <a href="https://www.giacomel.info/#projects" data-i18n="footer.projects">Progetti</a>
           <a href="https://github.com/albertogiacomel/robot3d" rel="noopener" data-i18n="footer.repo">
@@ -316,7 +320,9 @@
       {
         "imports": {
           "three": "./vendor/three/three.module.js",
-          "three/addons/": "./vendor/three/addons/"
+          "three/addons/": "./vendor/three/addons/",
+          "three/examples/jsm/": "./vendor/three/addons/",
+          "n8ao": "./vendor/n8ao/N8AO.js"
         }
       }
     </script>

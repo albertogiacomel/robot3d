@@ -18,7 +18,7 @@
     {
       "name": "robot si sposta con W",
       "ok": true,
-      "detail": "spostamento 2.10 unità"
+      "detail": "spostamento 2.70 unità"
     },
     {
       "name": "stato camminata raggiunto",
@@ -43,7 +43,7 @@
     {
       "name": "scatola sollevata da terra (y > 1.0)",
       "ok": true,
-      "detail": "y=2.51"
+      "detail": "y=2.47"
     },
     {
       "name": "scatola posata a terra",
@@ -72,5 +72,5 @@
     }
   ],
   "errors": [],
-  "checkedAt": "2026-10-21T18:17:02.849Z"
+  "checkedAt": "2026-10-21T18:41:32.438Z"
 }
