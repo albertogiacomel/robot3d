@@ -1,0 +1,111 @@
+{
+  "task_id": "robot3d",
+  "title": "Trasformazione del disegno a mano del robot in modello 3D interattivo (Three.js)",
+  "agent": "opencode",
+  "session": "2026-10-21-1842",
+  "started_at": "2026-10-21T18:31:00Z",
+  "closed_at": "2026-10-21T19:05:00Z",
+  "status": "completed",
+  "project_root": "C:\\Users\\albyw\\source\\Robot3D",
+  "description": {
+    "summary": "Disegno a mano del robot (testa a televisore, antenne a sfera, braccia a V con pinze a C, torso blu con quadrante rosso e pannello a 4 pulsanti, cosce lavanda, tibie a bande) ricostruito come modello 3D 100% procedurale in Three.js, con HUD interattivo, contorni in stile 'disegno a mano' e animazione idle.",
+    "work_performed": [
+      "Vendoring locale di three r160 (three.module.js, OrbitControls, RoundedBoxGeometry) in vendor/three: la pagina funziona offline, nessuna dipendenza CDN a runtime.",
+      "robot.js: costruzione procedurale del robot (58 mesh) senza alcuna mesh o texture importata: RoundedBoxGeometry per cranio/torso/arti, CylinderGeometry per giunti e collo, SphereGeometry per occhi/ginocchi/piedi-anca, TorusGeometry ad arco per la pinza a C, ExtrudeGeometry con bevel per il profilo trapezoidale del torso.",
+      "Passata di outline con MeshBasicMaterial side=BackSide e scala 1 + 0.11/maxDim (spessore costante ~0.05 unita mondo) per la silhouette nera fedele al tratto del disegno.",
+      "Animazione idle: respiro, dondolio della testa, vibrazione delle antenne, oscillazione simmetrica delle braccia, rotazione lenta delle pinze.",
+      "index.html: HUD con toggle rotazione/contorni/flat shading, select preset di camera (frontale, 3/4, laterale, posteriore, primo piano), parametri URL ?view=...&still=1, favicon SVG inline (elimina il 404 su /favicon.ico).",
+      "README.md con quick start, mappa disegno -> 3D, note tecniche e istruzioni di verifica."
+    ],
+    "evidence": [
+      "node --check robot.js -> SYNTAX_OK",
+      "Rendering headless Edge + Puppeteer: ERRORS: none (nessun errore JS in console, nessuna richiesta fallita)",
+      "Screenshot verificati: artifacts/robot-front.png, artifacts/robot-side.png, artifacts/robot-closeup.png, artifacts/robot-hero.png",
+      "Statistiche runtime lette dal DOM: 58 mesh - 152 draw call - 82.9k tri - build 235 ms",
+      "Git: commit d510426 'feat(robot3d): modello 3D procedurale del robot da disegno (Three.js)' su repo locale C:\\Users\\albyw\\source\\Robot3D"
+    ]
+  },
+  "benchmark": {
+    "baseline": {
+      "note": "Progetto nuovo: nessuna baseline preesistente. Riferimento = assenza di modello 3D del disegno.",
+      "metrics": {}
+    },
+    "post": {
+      "metrics": {
+        "other": {
+          "mesh_count": 58,
+          "draw_calls": 152,
+          "triangles": 82900,
+          "console_errors": 0,
+          "verified_views": 4
+        },
+        "latency": {
+          "scene_build_ms": 235,
+          "scene_build_ms_rerun": 264
+        },
+        "tests": {
+          "syntax_check": 1,
+          "headless_render_checks": 4
+        },
+        "files": {
+          "source_files": 3,
+          "vendor_files": 3,
+          "screenshots": 4
+        }
+      }
+    },
+    "delta": {
+      "note": "Non applicabile: deliverable nuovo senza baseline comparabile. Le metriche sopra sono il riferimento per eventuali ottimizzazioni successive."
+    }
+  },
+  "improvements": [
+    {
+      "rank": 1,
+      "title": "Ridurre i draw call istanziando le bande a barre dei arti",
+      "impact": "medium",
+      "ease": "medium",
+      "problem": "152 draw call per 82.9k triangoli: le bande colorate di braccia e tibie sono mesh separate, con materiali condivisi ma non istanziati.",
+      "proposal": "Usare InstancedMesh per le bande per istanza (braccia 20, tibie 8) con materiale vertex-colored, portando i draw call sotto 100."
+    },
+    {
+      "rank": 2,
+      "title": "Animazione e materiali in file separati",
+      "impact": "medium",
+      "ease": "low",
+      "problem": "robot.js mescola costruzione, materiali, animazione e UI in un unico file da ~600 righe.",
+      "proposal": "Estrarre robot-model.js (geometria), robot-anim.js (idle) e robot-ui.js (HUD/preset) per facilitare l'estensione a varianti del robot."
+    },
+    {
+      "rank": 3,
+      "title": "Export GLB del modello",
+      "impact": "medium",
+      "ease": "low",
+      "problem": "Il modello non e esportabile in formati interoperabili (GLB/GLTF), quindi non riusabile in altri motori o in AR.",
+      "proposal": "Aggiungere GLTFExporter (three/addons) con uno switch 'Download GLB' per esportare la gerarchia del robot con i materiali PBR."
+    },
+    {
+      "rank": 4,
+      "title": "Materiali piu fedeli al disegno (crayon/pastello)",
+      "impact": "low",
+      "ease": "medium",
+      "problem": "La finitura e liscia e lucida rispetto alla carta pastello del disegno originale.",
+      "proposal": "Aggiungere una roughness map procedurale su canvas (grana di carta) o un materiale toon con 3 gradini, attivabile con un toggle 'Pastello'."
+    },
+    {
+      "rank": 5,
+      "title": "Controllo orbitale e animazioni accessibili da tastiera",
+      "impact": "low",
+      "ease": "low",
+      "problem": "Il preset di camera e disponibile solo da select e nessuna scorciatoia da tastiera e definita.",
+      "proposal": "Aggiungere tasti 1-5 per i preset, 'R' per reset e 'C' per i contorni, con documentazione nell'HUD."
+    }
+  ],
+  "future_priority_question": "Quale direzione vuoi dare al progetto Robot3D come prossimo passo?",
+  "recommended_option": "Estrarre i moduli (robot-model / robot-anim / robot-ui) ed aggiungere l'export GLB: mantiene il codice pulito e rende il modello riusabile fuori dal browser, con impatto contenuto e rischio basso.",
+  "limits": [
+    "Nessun remote git configurato per il progetto: commit solo locale (repo init in C:\\Users\\albyw\\source\\Robot3D), nessun push e nessuna verifica CI remota eseguibile.",
+    "KB/QwenPaw (memory_search_kb.py, cbmm_cli.py, kb_log.py) e task_closure_report.py non sono eseguibili in questo workspace Windows: report R137 prodotto manualmente in conformita allo schema.",
+    "Le metriche di rendering sono state raccolte su Edge headless con SwiftShader (software rasterizer): i valori di draw call e triangoli sono indipendenti dal backend, ma un eventuale benchmark FPS su GPU reale non e stato eseguito.",
+    "La ricostruzione e interpretazione del disegno 2D: proporzioni e dettagli (spessore delle bande, ampiezza della pinza) sono stati tarati a occhio sul rendering, non misurati pixel per pixel."
+  ]
+}
