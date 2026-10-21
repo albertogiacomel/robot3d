@@ -10,7 +10,7 @@
   "linked_site": "https://www.giacomel.info/",
   "published": {
     "repository": "https://github.com/albertogiacomel/robot3d",
-    "pages": "https://robot3d.giacomel.info (Cloudflare Pages) · mirror https://albertogiacomel.github.io/robot3d/ (GitHub Pages)",
+    "pages": "https://robot3d.giacomel.info (Cloudflare Pages, dominio dedicato) · mirror https://albertogiacomel.github.io/robot3d/ (GitHub Pages)",
     "site_entry": "Sezione 'Experiments' di giacomel.info (voce Robot 3D, EN + IT)"
   },
   "description": {
@@ -28,7 +28,9 @@
       "Pubblicazione: repository GitHub creato via API, workflow GitHub Pages (.github/workflows/pages.yml) con build_type=workflow, sito verificato online (HTTP 200 su index, css, js, vendor, assets).",
       "Link su giacomel.info: nuova voce 'Robot 3D' nella sezione Experiments (contents/hobbies.ts, EN + IT) con immagine in public/images/experiments/robot3d.webp.",
       "Sostituzione di SSAOPass con N8AOPass 2.0.1 (vendorizzato in vendor/n8ao, import 'postprocessing' ricablato su three/addons): un solo passaggio con denoise bilaterale, -49% di draw call e -50% di triangoli a parita di resa delle occlusioni.",
-      "Pubblicazione Cloudflare Pages: helper OAuth PKCE con finestra 15 minuti (wrangler login scade dopo 120 s) e scambio token form-encoded; progetto Pages 'robot3d' creato via API; deploy di dist/ (38 file, 2.16 s); dominio robot3d.giacomel.info aggiunto via API con CNAME automatico; workflow CI con skip pulito se il secret CLOUDFLARE_API_TOKEN non e presente."
+      "Pubblicazione Cloudflare Pages: helper OAuth PKCE con finestra 15 minuti (wrangler login scade dopo 120 s) e scambio token form-encoded; progetto Pages 'robot3d' creato via API; deploy di dist/ (38 file, 2.16 s); dominio robot3d.giacomel.info aggiunto via API con CNAME automatico; workflow CI con skip pulito se il secret CLOUDFLARE_API_TOKEN non e presente.",
+      "Diagnostica del dominio: la validazione Pages restava 'pending' con 'CNAME record not set' (il record DNS non esisteva: la API Pages non lo crea). Creata la CNAME robot3d.giacomel.info -> robot3d.pages.dev con scope OAuth dns_records:edit; dominio passato ad 'active' con certificato emesso e HTTP 200.",
+      "Nuova skill 'cloudflare-pages-deploy' in ~/.config/opencode/skills: helper OAuth PKCE con finestra 15 minuti, deploy script end-to-end, template CI, troubleshooting table (scopo dns_records:edit, CNAME manuale, 525 transitorio, flattening del DNS pubblico)."
     ],
     "evidence": [
       "npm run verify -> 14/14 controlli superati (nessun errore console, camminata, risata, presa/posa scatola, reset, demo, preset camera)",
@@ -38,7 +40,8 @@
       "Screenshot in artifacts/ (verify, poses, demo, site) e assets/story-*.png per la sezione storia",
       "Commit Robot3D: 6ef1f2e (feature) + 702336a (trigger deploy); commit website: in corso",
       "N8AO: 271 draw call / 142.3k tri (prima SSAO: 535 / 284.6k); npm run verify 14/14 anche dopo la migrazione",
-      "Cloudflare: robot3d.pages.dev HTTP 200 (38 file caricati); dominio robot3d.giacomel.info status=pending (certificato Google in provisioning)"
+      "Cloudflare: robot3d.pages.dev HTTP 200 (38 file caricati); dominio robot3d.giacomel.info status=pending (certificato Google in provisioning)",
+      "robot3d.giacomel.info -> HTTP 200, header senza la scritta 'giacomel.info' (solo favicon AG), 271 draw call / 142.3k tri, 0 errori console; mirror GitHub Pages HTTP 200; sito giacomel.info con link a robot3d.giacomel.info"
     ]
   },
   "benchmark": {
@@ -134,10 +137,11 @@
   "future_priority_question": "Come vuoi proseguire con Robot3D dopo la pubblicazione?",
   "recommended_option": "Sottocampagna robot3d.giacomel.info: allinea il esperimento agli altri progetti del sito (stesso dominio, stessi cookie/analytics del portfolio) mantenendo GitHub Pages come mirror tecnico.",
   "limits": [
+    "Il job 'deploy' della CI resta skippato finche il secret CLOUDFLARE_API_TOKEN non e impostato nel repository albertogiacomel/robot3d: il token OAuth locale scade e non e adatto alla CI. Serve un token API Cloudflare (Account: Cloudflare Pages: Edit + Zone: DNS: Edit su giacomel.info).",
     "Le metriche di rendering sono state raccolte con Edge headless e SwiftShader (rasterizzazione software): i draw call e i triangoli sono indipendenti dal backend, ma non e stato eseguito un benchmark FPS su GPU reale.",
     "Le proporzioni del modello sono tarate a occhio sul rendering rispetto al disegno: non esiste una misura pixel-per-pixel del foglio originale.",
     "Nessun accesso al servizio KB/CBMM da questo workspace: la ricerca preflight non e stata eseguita e viene dichiarata come non verificabile.",
-    "Il workflow legacy 'pages build and deployment' creato dall'API GitHub non e eliminabile via API (404/422): convive con il workflow 'Deploy to GitHub Pages', entrambi verdi.",
-    "La verifica del sito giacomel.info in produzione richiede il deploy Vercel: la modifica e stata committata e il link punta all'URL pubblicato su GitHub Pages."
+    "Il workflow legacy 'pages build and deployment' creato dall'API GitHub non e eliminabile via API (404/422): convive con 'Deploy to GitHub Pages', entrambi verdi.",
+    "La verifica del sito giacomel.info in produzione dipende dal deploy Vercel: la modifica e stata committata e il link punta al dominio Cloudflare verificato."
   ]
 }
