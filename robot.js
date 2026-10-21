@@ -9,13 +9,28 @@
  *   piedi 0.04 - 0.42 | tibia 0.40 - 1.34 | ginocchio 1.41
  *   coscia 1.46 - 2.68 | anca 2.75 | torso 2.75 - 4.55 | collo 4.62
  *   testa 4.68 - 6.62 | cupola 6.60 - 7.10 | antenne fino a ~7.80
+ *
+ * Gerarchia di scena (necessaria alle animazioni):
+ *   robot (radice, posizione sul terreno e orientamento)
+ *     └ body (respiro, inclinazioni)
+ *         ├ torso / neck / head / antenne
+ *         ├ arms[L|R]  (pivot spalla) └ elbow (pivot gomito) └ claw
+ *         ├ legs[L|R]  (pivot anca)   └ knee  (pivot ginocchio) └ piede
+ *         └ carryAnchor (punto in cui la scatola viene agganciata)
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createRobotActions } from './robot-actions.js';
 
 const T0 = performance.now();
+const DEG = Math.PI / 180;
 
 /* ------------------------------------------------------------------ *
  * Palette ( campionata dal disegno originale )
@@ -38,6 +53,9 @@ const C = {
   orange: 0xe2a87c,
   tan: 0xd2b0a3,
   greyPanel: 0xb6b6b6,
+  cardboard: 0xc98f4e,
+  cardboardDark: 0xb87a3c,
+  tape: 0xd9b48a,
 };
 
 /* ------------------------------------------------------------------ *
@@ -46,8 +64,8 @@ const C = {
 const matCache = new Map();
 
 /** Materiale standard condiviso (cache per colore + finitura). */
-function mat(color, { rough = 0.74, metal = 0.1, flat = false } = {}) {
-  const key = `${color}|${rough}|${metal}|${flat}`;
+function mat(color, { rough = 0.74, metal = 0.1, flat = false, env = 0.35 } = {}) {
+  const key = `${color}|${rough}|${metal}|${flat}|${env}`;
   if (!matCache.has(key)) {
     matCache.set(
       key,
@@ -56,6 +74,7 @@ function mat(color, { rough = 0.74, metal = 0.1, flat = false } = {}) {
         roughness: rough,
         metalness: metal,
         flatShading: flat,
+        envMapIntensity: env,
       })
     );
   }
@@ -103,54 +122,112 @@ camera.position.set(0.8, 4.9, 15.5);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.target.set(0, 3.9, 0);
+controls.enablePan = false;
+controls.target.set(0, 3.4, 0);
 controls.minDistance = 6;
 controls.maxDistance = 34;
 controls.maxPolarAngle = Math.PI * 0.52;
 controls.autoRotateSpeed = 1.1;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xbfa98f, 0.75));
+/* ------------------------------------------------------------------ *
+ * Illuminazione e resa
+ *
+ * - env map PBR (RoomEnvironment) per i riflessi sui materiali
+ * - key light unica sorgente di ombre, con frustum stretto che segue
+ *   il robot: ombre definite e costanti in tutta l'area di gioco
+ * - fill/rim/hemisphere tenuti bassi: le ombre restano leggibili
+ * - SSAO per le occlusioni di contatto (senza ombre \"flottanti\")
+ * ------------------------------------------------------------------ */
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+scene.environment = envRT.texture;
 
-const key = new THREE.DirectionalLight(0xfff6e8, 2.3);
+const hemisphere = new THREE.HemisphereLight(0xffffff, 0xbfa98f, 0.22);
+scene.add(hemisphere);
+
+const key = new THREE.DirectionalLight(0xfff6e8, 2.9);
 key.position.set(6, 12, 9);
 key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
+key.shadow.mapSize.set(4096, 4096);
 key.shadow.camera.near = 1;
-key.shadow.camera.far = 44;
-key.shadow.camera.left = -12;
-key.shadow.camera.right = 12;
-key.shadow.camera.top = 15;
-key.shadow.camera.bottom = -2;
-key.shadow.bias = -0.0009;
-key.shadow.normalBias = 0.02;
+key.shadow.camera.far = 32;
+// Il frustum segue il robot: deve coprire robot + scatola + terreno
+key.shadow.camera.left = -6;
+key.shadow.camera.right = 6;
+key.shadow.camera.top = 9;
+key.shadow.camera.bottom = -6;
+key.shadow.bias = -0.0004;
+key.shadow.normalBias = 0.028;
+key.shadow.radius = 2;
 scene.add(key);
+scene.add(key.target);
 
-const fill = new THREE.DirectionalLight(0xdfe9ff, 0.55);
+const fill = new THREE.DirectionalLight(0xdfe9ff, 0.2);
 fill.position.set(-8, 5, 6);
 scene.add(fill);
 
-const rim = new THREE.DirectionalLight(0xffffff, 0.85);
+const rim = new THREE.DirectionalLight(0xffffff, 0.45);
 rim.position.set(-2, 7, -10);
 scene.add(rim);
 
+/* ------------------------------------------------------------------ *
+ * Pipeline di post-processing: RenderPass -> SSAO -> OutputPass
+ * ------------------------------------------------------------------ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const ssao = new SSAOPass(scene, camera, canvas.clientWidth, canvas.clientHeight);
+ssao.kernelRadius = 0.35;
+ssao.minDistance = 0.002;
+ssao.maxDistance = 0.18;
+ssao.output = SSAOPass.OUTPUT.Default;
+composer.addPass(ssao);
+composer.addPass(new OutputPass());
+
 // Pavimento
 const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(28, 72),
-  new THREE.MeshStandardMaterial({ color: 0xe9e2d4, roughness: 1, metalness: 0 })
+  new THREE.CircleGeometry(28, 96),
+  new THREE.MeshStandardMaterial({
+    color: 0xe9e2d4,
+    roughness: 0.96,
+    metalness: 0,
+    envMapIntensity: 0.12,
+  })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+
+/* ---------------- Tema chiaro / scuro ---------------- */
+const THEMES = {
+  light: { bg: 0xf3efe6, ground: 0xe9e2d4, key: 2.9, env: 0.12 },
+  dark: { bg: 0x0d0f14, ground: 0x171a21, key: 2.2, env: 0.2 },
+};
+
+function applyThemeColors(name) {
+  const t = THEMES[name] || THEMES.light;
+  scene.background = new THREE.Color(t.bg);
+  if (scene.fog) scene.fog.color.set(t.bg);
+  ground.material.color.set(t.ground);
+  ground.material.envMapIntensity = t.env;
+  key.intensity = t.key;
+  key.color.set(name === 'dark' ? 0xdfe6ff : 0xfff6e8);
+  hemisphere.color.set(name === 'dark' ? 0x8fa0c0 : 0xffffff);
+  hemisphere.groundColor.set(name === 'dark' ? 0x14161c : 0xbfa98f);
+}
+
+applyThemeColors(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+window.addEventListener('robot-theme', (e) => applyThemeColors(e.detail.theme));
 
 /* ------------------------------------------------------------------ *
  * Costruzione del robot
@@ -158,17 +235,35 @@ scene.add(ground);
 const robot = new THREE.Group();
 scene.add(robot);
 
-const animated = {
+const body = new THREE.Group();
+robot.add(body);
+
+// Busto: pivot alla vita, permette l'inclinazione in avanti (reach, saluto)
+const chest = new THREE.Group();
+chest.position.y = 2.75;
+body.add(chest);
+
+const rig = {
+  body,
+  chest,
+  torso: null,
+  neck: null,
   head: null,
   antennae: null,
-  arms: [],
+  mouth: null,
+  teeth: [],
+  eyes: [],
+  arms: {},
+  legs: {},
   claws: [],
+  carryAnchor: null,
 };
 
 /* ---------------- Torso ---------------- */
 const torsoGroup = new THREE.Group();
-torsoGroup.position.y = 3.65;
-robot.add(torsoGroup);
+torsoGroup.position.y = 0.9; // 3.65 assoluti
+chest.add(torsoGroup);
+rig.torso = torsoGroup;
 
 function buildTorso() {
   const wTop = 1.5;
@@ -244,8 +339,9 @@ function buildTorso() {
 /* ---------------- Collo ---------------- */
 function buildNeck() {
   const neck = new THREE.Group();
-  neck.position.y = 4.62;
-  robot.add(neck);
+  neck.position.y = 1.87; // 4.62 assoluti
+  chest.add(neck);
+  rig.neck = neck;
   cylinder(0.3, 0.33, 0.36, 28, mat(C.pink), neck, { pos: [0, 0, 0], axis: 'y' });
   mesh(new THREE.TorusGeometry(0.31, 0.05, 10, 30), mat(C.blue), neck, {
     pos: [0, 0.09, 0],
@@ -256,9 +352,9 @@ function buildNeck() {
 /* ---------------- Testa ---------------- */
 function buildHead() {
   const head = new THREE.Group();
-  head.position.y = 5.65;
-  robot.add(head);
-  animated.head = head;
+  head.position.y = 2.9; // 5.65 assoluti
+  chest.add(head);
+  rig.head = head;
 
   // Cranio
   mesh(rbox(2.5, 1.95, 1.5, 0.32, 4), mat(C.headGrey), head, { name: 'head' });
@@ -269,30 +365,48 @@ function buildHead() {
     name: 'face',
   });
 
-  // Occhi neri con riflesso
+  // Occhi neri con riflesso (gruppo per lo squilibrio durante il riso)
   [-0.52, 0.52].forEach((x) => {
-    mesh(new THREE.SphereGeometry(0.36, 32, 24), mat(C.black, { rough: 0.35 }), head, {
-      pos: [x, 0.16, 0.93],
+    const eye = new THREE.Group();
+    eye.position.set(x, 0.16, 0.93);
+    head.add(eye);
+    mesh(new THREE.SphereGeometry(0.36, 32, 24), mat(C.black, { rough: 0.35 }), eye, {
       scale: [1, 1, 0.72],
       outline: false,
     });
-    mesh(new THREE.SphereGeometry(0.09, 16, 12), mat(C.white, { rough: 0.2 }), head, {
-      pos: [x - 0.12, 0.29, 1.12],
+    mesh(new THREE.SphereGeometry(0.09, 16, 12), mat(C.white, { rough: 0.2 }), eye, {
+      pos: [-0.12, 0.13, 0.19],
       outline: false,
     });
+    rig.eyes.push(eye);
   });
 
-  // Bocca sorridente con separatori
-  mesh(rbox(1.62, 0.55, 0.18, 0.13, 3), mat(C.white), head, {
-    pos: [0, -0.44, 0.94],
-    name: 'mouth',
+  // Bocca: uno "schermo" scuro con i denti sopra, come il display del robot.
+  // Nessuna bocca aperta: durante il riso cambiano forma i denti.
+  const mouth = new THREE.Group();
+  mouth.position.set(0, -0.44, 0.94);
+  head.add(mouth);
+  rig.mouth = mouth;
+
+  mesh(rbox(1.74, 0.68, 0.12, 0.12), mat(0x1b1b1b, { rough: 0.42, env: 0.5 }), mouth, {
+    pos: [0, 0, -0.03],
+    outline: false,
+    name: 'mouth-screen',
   });
-  [-0.48, -0.16, 0.16, 0.48].forEach((x) => {
-    mesh(rbox(0.05, 0.5, 0.07, 0.01), mat(C.black, { rough: 0.5 }), head, {
-      pos: [x, -0.44, 1.04],
-      outline: false,
+
+  // Denti: elementi separati, il loro profilo si modifica durante il riso
+  rig.teeth = [];
+  const TEETH = 5;
+  const SPAN = 0.32;
+  for (let i = 0; i < TEETH; i += 1) {
+    const x = (i - (TEETH - 1) / 2) * SPAN;
+    const tooth = mesh(rbox(0.28, 0.5, 0.14, 0.05), mat(C.white), mouth, {
+      pos: [x, 0, 0.04],
+      name: `tooth-${i}`,
     });
-  });
+    tooth.userData.baseX = x;
+    rig.teeth.push(tooth);
+  }
 
   // Auricolari laterali
   [-1, 1].forEach((s) => {
@@ -316,7 +430,7 @@ function buildHead() {
   // Antenne con sfera nera
   const antennae = new THREE.Group();
   head.add(antennae);
-  animated.antennae = antennae;
+  rig.antennae = antennae;
 
   [-1, 1].forEach((s) => {
     const ant = new THREE.Group();
@@ -340,11 +454,11 @@ function buildHead() {
  * side = +1 (x positivo) oppure -1 (x negativo).
  */
 function buildArm(side) {
+  const key = side === 1 ? 'R' : 'L';
   const arm = new THREE.Group();
-  arm.position.set(side * 1.05, 4.35, 0);
-  arm.rotation.z = side === 1 ? THREE.MathUtils.degToRad(52) : THREE.MathUtils.degToRad(128);
-  robot.add(arm);
-  animated.arms.push({ arm, base: arm.rotation.z, side });
+  arm.position.set(side * 1.05, 1.6, 0.22); // spalla a 4.35 assoluti, davanti al torace
+  arm.rotation.z = side === 1 ? 52 * DEG : 128 * DEG;
+  chest.add(arm);
 
   // Giunto radice
   cylinder(0.46, 0.46, 0.6, 32, mat(C.tan), arm, { pos: [0, 0, 0], outline: false });
@@ -362,26 +476,30 @@ function buildArm(side) {
   // Piccolo disco centrale
   cylinder(0.17, 0.17, 0.16, 24, mat(C.white), arm, { pos: [0.91, 0, 0.25], outline: false });
 
-  // Avambraccio a bande
+  // Avambraccio (pivot gomito)
+  const elbow = new THREE.Group();
+  elbow.position.set(1.72, 0, 0);
+  arm.add(elbow);
+
   const fore = [C.green, C.orange, C.lavender, C.yellow];
   fore.forEach((c, i) => {
-    mesh(rbox(0.21, 0.36, 0.34, 0.06), mat(c), arm, {
-      pos: [1.9 + i * 0.21, 0, 0],
+    mesh(rbox(0.21, 0.36, 0.34, 0.06), mat(c), elbow, {
+      pos: [0.18 + i * 0.21, 0, 0],
       name: 'forearm-band',
     });
   });
 
   // Polso
-  mesh(new THREE.SphereGeometry(0.15, 20, 16), mat(C.greyPanel), arm, {
-    pos: [2.62, 0, 0],
+  mesh(new THREE.SphereGeometry(0.15, 20, 16), mat(C.greyPanel), elbow, {
+    pos: [0.9, 0, 0],
     name: 'wrist',
   });
 
   // Mano a pinza C
   const claw = new THREE.Group();
-  claw.position.set(3.02, 0, 0);
-  arm.add(claw);
-  animated.claws.push(claw);
+  claw.position.set(1.3, 0, 0);
+  elbow.add(claw);
+  rig.claws.push(claw);
 
   const gap = Math.PI * 0.45;
   const arc = Math.PI * 2 - gap * 2;
@@ -404,14 +522,17 @@ function buildArm(side) {
       outline: false,
     });
   });
+
+  rig.arms[key] = { group: arm, elbow, side, base: arm.rotation.z };
 }
 
 /* ---------------- Gambe ---------------- */
 function buildLeg(side) {
+  const key = side === 1 ? 'R' : 'L';
   const leg = new THREE.Group();
   leg.position.set(side * 0.6, 2.75, 0);
-  leg.rotation.z = THREE.MathUtils.degToRad(side * 8);
-  robot.add(leg);
+  leg.rotation.z = side * 8 * DEG;
+  body.add(leg);
 
   // Giunto d'anca
   cylinder(0.38, 0.38, 0.52, 32, mat(C.tan), leg, { pos: [0, -0.05, 0], outline: false });
@@ -423,9 +544,12 @@ function buildLeg(side) {
     name: 'thigh',
   });
 
-  // Ginocchio
-  mesh(new THREE.SphereGeometry(0.48, 28, 20), mat(C.orange), leg, {
-    pos: [0, -1.34, 0],
+  // Ginocchio (pivot)
+  const knee = new THREE.Group();
+  knee.position.set(0, -1.34, 0);
+  leg.add(knee);
+
+  mesh(new THREE.SphereGeometry(0.48, 28, 20), mat(C.orange), knee, {
     scale: [1, 0.62, 1],
     name: 'knee',
   });
@@ -433,21 +557,52 @@ function buildLeg(side) {
   // Tibia a bande
   const shin = [C.blueLight, C.yellow, C.orange, C.yellow];
   shin.forEach((c, i) => {
-    mesh(rbox(0.6, 0.26, 0.6, 0.06), mat(c), leg, {
-      pos: [0, -1.54 - i * 0.27, 0],
+    mesh(rbox(0.6, 0.26, 0.6, 0.06), mat(c), knee, {
+      pos: [0, -0.2 - i * 0.27, 0],
       name: 'shin-band',
     });
   });
 
   // Piede
-  mesh(rbox(0.78, 0.34, 1.0, 0.12, 3), mat(C.blueLight), leg, {
-    pos: [0, -2.5, 0.12],
+  mesh(rbox(0.78, 0.34, 1.0, 0.12, 3), mat(C.blueLight), knee, {
+    pos: [0, -1.0, 0.12],
     name: 'foot',
   });
-  mesh(rbox(0.8, 0.12, 1.02, 0.05), mat(C.orange), leg, {
-    pos: [0, -2.65, 0.12],
+  mesh(rbox(0.8, 0.12, 1.02, 0.05), mat(C.orange), knee, {
+    pos: [0, -1.31, 0.12],
     name: 'foot-sole',
   });
+
+  rig.legs[key] = { group: leg, knee, side };
+}
+
+/* ---------------- Punto di aggancio della scatola ---------------- */
+const carryAnchor = new THREE.Group();
+carryAnchor.position.set(0, -0.15, 0.75); // spazio del busto: centro della scatola
+chest.add(carryAnchor);
+rig.carryAnchor = carryAnchor;
+
+/* ---------------- Scatola di cartone ---------------- */
+function buildCrate() {
+  const crate = new THREE.Group();
+  crate.name = 'crate';
+  mesh(rbox(0.8, 0.7, 0.8, 0.04), mat(C.cardboard), crate, { name: 'crate-body' });
+  mesh(rbox(0.84, 0.07, 0.84, 0.02), mat(C.tape), crate, { pos: [0, 0.36, 0], name: 'crate-tape' });
+  [-0.28, 0.28].forEach((x) => {
+    mesh(rbox(0.09, 0.72, 0.84, 0.02), mat(C.cardboardDark), crate, {
+      pos: [x, 0, 0],
+      name: 'crate-strap',
+    });
+  });
+  mesh(rbox(0.34, 0.24, 0.02, 0.01), mat(C.white), crate, {
+    pos: [0, 0.02, 0.41],
+    outline: false,
+    name: 'crate-label',
+  });
+  crate.position.set(2.6, 0.35, 2.2);
+  crate.rotation.y = 0.4;
+  scene.add(crate);
+  return crate;
 }
 
 /* ---------------- Montaggio ---------------- */
@@ -458,6 +613,7 @@ buildArm(1);
 buildArm(-1);
 buildLeg(1);
 buildLeg(-1);
+const crate = buildCrate();
 
 /* ------------------------------------------------------------------ *
  * Passata outline (stile "disegno a mano": silhouette nera)
@@ -488,7 +644,7 @@ function buildOutlines(root) {
     if (!Number.isFinite(maxDim) || maxDim <= 0) return;
 
     const o = new THREE.Mesh(m.geometry, outlineMaterial);
-    // offset costante di ~0.045 unita mondo sul bordo della silhouette
+    // offset costante di ~0.055 unita mondo sul bordo della silhouette
     o.scale.copy(scale).multiplyScalar(1 + 0.11 / maxDim);
     o.position.copy(m.position);
     o.quaternion.copy(m.quaternion);
@@ -502,9 +658,146 @@ function buildOutlines(root) {
 }
 
 buildOutlines(robot);
+buildOutlines(crate);
 
-// Tempo di costruzione della scena (ms)
-const BUILD_MS = performance.now() - T0;
+/* ------------------------------------------------------------------ *
+ * Interazione: input, macchina a stati, animazioni
+ * ------------------------------------------------------------------ */
+const stateLabel = document.getElementById('state-label');
+
+const actions = createRobotActions({
+  robot,
+  body,
+  rig,
+  crate,
+  scene,
+  camera,
+  controls,
+  dom: document,
+  onState: (state, label) => {
+    if (stateLabel) stateLabel.textContent = label;
+    // site.js gestisce la traduzione dell'etichetta
+    window.dispatchEvent(new CustomEvent('robot-state', { detail: { state, label } }));
+  },
+});
+
+/* ------------------------------------------------------------------ *
+ * Direttore di camera
+ *
+ * - in pausa: il target segue il robot (orbita libera dell'utente)
+ * - in "cinema": la camera si posa su inquadrature calcolate dallo stato
+ *   del robot, con dissolvenze morbide; l'input dell'utente ha sempre
+ *   la precedenza e sospende il direttore per qualche secondo.
+ * ------------------------------------------------------------------ */
+const cameraDirector = {
+  cinema: false,
+  userUntil: 0,
+  current: 'idle',
+};
+
+/** Regia cinematografica attivata dall'utente (la demo la attiva da sola). */
+let cinemaEnabled = false;
+
+const shotPos = new THREE.Vector3();
+const shotTarget = new THREE.Vector3();
+let cameraClock = 0;
+
+controls.addEventListener('start', () => {
+  cameraDirector.userUntil = performance.now() + 2400;
+});
+
+/** Inquadratura consigliata per lo stato corrente (coordinate mondo). */
+function shotForState(state) {
+  const p = robot.position;
+  const yaw = robot.rotation.y;
+  const fx = Math.sin(yaw);
+  const fz = Math.cos(yaw);
+  const rx = Math.cos(yaw);
+  const rz = -Math.sin(yaw);
+
+  // Dolly lento per dare vita alle inquadrature
+  const drift = 1 + 0.045 * Math.sin(cameraClock * 0.45);
+
+  switch (state) {
+    case 'laugh':
+      // Primo piano sulla testa
+      return {
+        pos: [p.x + (fx * 6.2 + rx * 1.6) * drift, 6.0, p.z + (fz * 6.2 + rz * 1.6) * drift],
+        target: [p.x, 5.3, p.z],
+      };
+    case 'wave':
+      return {
+        pos: [p.x + (fx * 7.5 + rx * 3.0) * drift, 5.4, p.z + (fz * 7.5 + rz * 3.0) * drift],
+        target: [p.x, 4.4, p.z],
+      };
+    case 'reach':
+    case 'grab':
+    case 'lift':
+      // Contrasto basso sulla scatola, a 3/4
+      return {
+        pos: [
+          p.x + (fx * 4.4 + rx * 3.2) * drift,
+          3.0,
+          p.z + (fz * 4.4 + rz * 3.2) * drift,
+        ],
+        target: [p.x + fx * 0.9, 1.2, p.z + fz * 0.9],
+      };
+    case 'carry':
+      // Piano medio sul robot che trasporta
+      return {
+        pos: [
+          p.x + (fx * 8.0 + rx * 4.0) * drift,
+          4.2,
+          p.z + (fz * 8.0 + rz * 4.0) * drift,
+        ],
+        target: [p.x, 2.9, p.z],
+      };
+    case 'walk':
+    case 'approach':
+      // Campo largo per seguire il cammino
+      return {
+        pos: [
+          p.x + (fx * 12.0 + rx * 5.5) * drift,
+          5.4,
+          p.z + (fz * 12.0 + rz * 5.5) * drift,
+        ],
+        target: [p.x + fx * 1.5, 3.0, p.z + fz * 1.5],
+      };
+    case 'place':
+      return {
+        pos: [
+          p.x + (fx * 6.5 + rx * 2.6) * drift,
+          3.4,
+          p.z + (fz * 6.5 + rz * 2.6) * drift,
+        ],
+        target: [p.x + fx * 0.9, 1.0, p.z + fz * 0.9],
+      };
+    default:
+      return { pos: [0.8, 4.9, 15.5], target: [p.x, 3.4, p.z] };
+  }
+}
+
+function updateCamera(dt) {
+  const now = performance.now();
+  const state = actions.getState();
+  cameraClock += dt;
+  cameraDirector.cinema = cinemaEnabled || actions.isDemoRunning();
+
+  if (cameraDirector.cinema && now > cameraDirector.userUntil) {
+    const shot = shotForState(state);
+    shotPos.set(shot.pos[0], shot.pos[1], shot.pos[2]);
+    shotTarget.set(shot.target[0], shot.target[1], shot.target[2]);
+    const k = 1 - Math.exp(-2.2 * dt);
+    camera.position.lerp(shotPos, k);
+    controls.target.lerp(shotTarget, k);
+    cameraDirector.current = state;
+    return;
+  }
+
+  // Camera manuale: il target segue il robot mantenendo l'orbita
+  shotTarget.set(robot.position.x, 3.4, robot.position.z);
+  controls.target.lerp(shotTarget, 1 - Math.exp(-2.5 * dt));
+}
 
 /* ------------------------------------------------------------------ *
  * Loop di animazione
@@ -513,56 +806,57 @@ const clock = new THREE.Clock();
 const statsEl = document.getElementById('stat-tri');
 let nextStat = 0;
 
-function animate() {
-  const t = clock.getElapsedTime();
+// Con il composer le info vanno accumulate su tutti i pass
+renderer.info.autoReset = false;
 
-  // Statistiche di rendering (draw call / triangoli)
+function animate() {
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+
+  // Statistiche di rendering (draw call / triangoli) del frame precedente
   if (t > nextStat) {
     nextStat = t + 0.5;
     const r = renderer.info.render;
     statsEl.textContent = `${outlineMeshes.length} mesh · ${r.calls} draw call · ${(
       r.triangles / 1000
-    ).toFixed(1)}k tri · build ${BUILD_MS.toFixed(0)} ms`;
+    ).toFixed(1)}k tri`;
   }
 
-  // Respiro
-  robot.position.y = Math.sin(t * 1.15) * 0.035;
-  robot.scale.y = 1 + Math.sin(t * 1.15) * 0.006;
+  actions.update(dt);
+  updateCamera(dt);
 
-  // Testa: lieve dondolio
-  if (animated.head) {
-    animated.head.rotation.z = Math.sin(t * 0.75) * 0.035;
-    animated.head.rotation.y = Math.sin(t * 0.45) * 0.06;
-  }
-
-  // Antenne
-  if (animated.antennae) {
-    animated.antennae.rotation.z = Math.sin(t * 1.6) * 0.07;
-  }
-
-  // Braccia: oscillazione simmetrica
-  animated.arms.forEach(({ arm, base, side }) => {
-    arm.rotation.z = base + Math.sin(t * 0.85 + (side > 0 ? 0 : Math.PI)) * 0.05;
-    arm.rotation.x = Math.sin(t * 0.6) * 0.03;
-  });
-
-  // Pinze: rotazione lenta
-  animated.claws.forEach((claw, i) => {
-    claw.rotation.z = Math.sin(t * 0.9 + i * Math.PI) * 0.18;
-  });
+  // La key light (unica sorgente di ombre) segue il robot: ombre nitide ovunque
+  key.position.set(robot.position.x + 6, 12, robot.position.z + 9);
+  key.target.position.set(robot.position.x, 2.4, robot.position.z);
+  key.target.updateMatrixWorld();
 
   controls.update();
-  renderer.render(scene, camera);
+  renderer.info.reset();
+  composer.render();
   requestAnimationFrame(animate);
 }
 
 animate();
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+window.addEventListener('resize', resize);
+resize();
+
+/** Adatta renderer, composer e camera alle dimensioni reali del canvas. */
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  if (w === 0 || h === 0) return;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  ssao.setSize(w, h);
+}
+
+// Il canvas cambia dimensione con il layout (griglia, responsive)
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(resize).observe(canvas);
+}
 
 /* ------------------------------------------------------------------ *
  * UI
@@ -593,9 +887,6 @@ function bindToggle(id, initial, onChange) {
 const autoRotate = bindToggle('btn-rotate', true, (v) => {
   controls.autoRotate = v;
 });
-bindToggle('btn-outline', true, (v) => {
-  outlineMeshes.forEach((o) => (o.visible = v));
-});
 
 bindToggle('btn-flat', false, (v) => {
   matCache.forEach((m) => {
@@ -604,12 +895,28 @@ bindToggle('btn-flat', false, (v) => {
   });
 });
 
+const audioToggle = bindToggle('btn-audio', true, (v) => {
+  actions.setMuted(!v);
+});
+
+/* Braccia: abbassate (default) o in V come nel disegno */
+let armsUp = false;
+bindToggle('btn-arms', false, (v) => {
+  armsUp = v;
+  actions.setArmPose(v ? 'up' : 'down');
+});
+
+/* Regia cinematografica: inquadrature guidate dallo stato del robot */
+bindToggle('btn-cinema', false, (v) => {
+  cinemaEnabled = v;
+});
+
 /* ---------------- Preset di camera ---------------- */
 const VIEWS = {
-  front: { pos: [0.8, 4.9, 15.5], target: [0, 3.9, 0] },
-  hero: { pos: [7.5, 6.4, 10.5], target: [0, 3.9, 0] },
-  side: { pos: [15.5, 4.9, 0.6], target: [0, 3.9, 0] },
-  back: { pos: [-0.8, 4.9, -15.5], target: [0, 3.9, 0] },
+  front: { pos: [0.8, 4.9, 15.5], target: [0, 3.4, 0] },
+  hero: { pos: [7.5, 6.4, 10.5], target: [0, 3.4, 0] },
+  side: { pos: [15.5, 4.9, 0.6], target: [0, 3.4, 0] },
+  back: { pos: [-0.8, 4.9, -15.5], target: [0, 3.4, 0] },
   closeup: { pos: [3.6, 7.2, 8.6], target: [0, 5.3, 0] },
 };
 
@@ -630,6 +937,16 @@ document.getElementById('btn-reset').addEventListener('click', () => {
   viewSelect.value = 'front';
   applyView('front');
   autoRotate.set(true);
+  actions.resetAll();
+});
+
+/* ---------------- Azioni narrative ---------------- */
+document.getElementById('btn-laugh').addEventListener('click', () => actions.laugh());
+document.getElementById('btn-wave').addEventListener('click', () => actions.wave());
+document.getElementById('btn-grab').addEventListener('click', () => actions.toggleGrab());
+document.getElementById('btn-demo').addEventListener('click', () => {
+  actions.runDemo();
+  autoRotate.set(false);
 });
 
 /* Parametri URL: ?view=hero&still=1 */
@@ -642,5 +959,28 @@ if (urlView && VIEWS[urlView]) {
 if (params.get('still') === '1') {
   autoRotate.set(false);
 }
+if (params.get('audio') === '0') {
+  audioToggle.set(false);
+}
 
-document.getElementById('stat-tri').textContent = `${outlineMeshes.length} mesh`;
+/* Esposizione per test automatici (Playwright/Puppeteer) */
+window.__robot = {
+  actions,
+  scene,
+  renderer,
+  camera,
+  lights: { key, fill, rim },
+  rig,
+  crateObject: crate,
+  info: () => actions.info(),
+  state: () => actions.getState(),
+  position: () => ({ x: robot.position.x, z: robot.position.z }),
+  crate: () => ({ x: crate.position.x, y: crate.position.y, z: crate.position.z }),
+  crateWorld: () => {
+    const v = new THREE.Vector3();
+    crate.getWorldPosition(v);
+    return { x: v.x, y: v.y, z: v.z };
+  },
+  carrying: () => actions.info().carrying,
+  setLang: (lang) => window.dispatchEvent(new CustomEvent('robot-lang', { detail: { lang } })),
+};

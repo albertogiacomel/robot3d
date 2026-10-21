@@ -5,8 +5,15 @@
   "type": "module",
   "description": "Modello 3D del robot da disegno, costruito con Three.js (geometria procedurale)",
   "scripts": {
-    "start": "python -m http.server 8123",
-    "check": "node --check robot.js"
+    "poses": "node scripts/capture-poses.mjs",
+    "check": "node --check robot.js && node --check robot-actions.js && node --check site.js",
+    "verify": "node scripts/verify-actions.mjs",
+    "capture": "node scripts/capture-story.mjs",
+    "demo": "node scripts/capture-demo.mjs",
+    "start": "python -m http.server 8123"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer-core": "^25.15.0"
+  }
 }

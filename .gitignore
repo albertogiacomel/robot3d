@@ -4,3 +4,9 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# Schermate di sviluppo (non versionate: rigenerabili con npm run capture)
+artifacts/poses/
+artifacts/demo/
+artifacts/site/
+artifacts/shadow-check/

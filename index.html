@@ -1,232 +1,316 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Robot 3D: ricostruzione del disegno a mano con Three.js, geometria 100% procedurale." />
+    <meta
+      name="description"
+      content="Robot 3D: un disegno a mano diventa un videogioco 3D con Three.js. Movimento, camminata, risata e raccolta della scatola."
+    />
+    <meta property="og:title" content="Robot 3D · Dal disegno al videogioco" />
+    <meta
+      property="og:description"
+      content="Ricostruzione 3D procedurale del robot del disegno a mano, con animazioni, controller e regia cinematografica."
+    />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%238a8a8a'/%3E%3Ccircle cx='22' cy='26' r='7' fill='%230d0d0d'/%3E%3Ccircle cx='42' cy='26' r='7' fill='%230d0d0d'/%3E%3Crect x='14' y='40' width='36' height='11' rx='5' fill='%23f4f4f2'/%3E%3Cpath d='M26 40v11M38 40v11' stroke='%230d0d0d' stroke-width='2'/%3E%3Cpath d='M32 8V2M32 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z' fill='%230d0d0d'/%3E%3C/svg%3E"
     />
-    <title>Robot 3D · Three.js</title>
-    <style>
-      :root {
-        --bg: #f3efe6;
-        --ink: #24211c;
-        --muted: #6c6459;
-        --panel: rgba(255, 253, 248, 0.82);
-        --line: rgba(36, 33, 28, 0.14);
-        --accent: #3c74b0;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        margin: 0;
-        height: 100%;
-        overflow: hidden;
-        background: var(--bg);
-        color: var(--ink);
-        font-family: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
-      }
-
-      #scene {
-        display: block;
-        width: 100vw;
-        height: 100vh;
-        touch-action: none;
-      }
-
-      .hud {
-        position: fixed;
-        top: 18px;
-        left: 18px;
-        width: min(310px, calc(100vw - 36px));
-        padding: 16px 18px 14px;
-        background: var(--panel);
-        backdrop-filter: blur(8px);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        box-shadow: 0 12px 32px rgba(36, 33, 28, 0.12);
-      }
-
-      .hud h1 {
-        margin: 0 0 2px;
-        font-size: 17px;
-        letter-spacing: 0.2px;
-      }
-
-      .hud p {
-        margin: 0 0 12px;
-        font-size: 12px;
-        line-height: 1.45;
-        color: var(--muted);
-      }
-
-      .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-      }
-
-      button {
-        flex: 1 1 auto;
-        padding: 8px 10px;
-        font: inherit;
-        font-size: 12px;
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid var(--line);
-        border-radius: 9px;
-        cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
-      }
-
-      button:hover {
-        background: #fff;
-        border-color: rgba(36, 33, 28, 0.3);
-      }
-
-      button:active {
-        transform: translateY(1px);
-      }
-
-      button.is-on {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
-      }
-
-      .hint {
-        margin-top: 12px;
-        padding-top: 10px;
-        border-top: 1px solid var(--line);
-        font-size: 11px;
-        line-height: 1.5;
-        color: var(--muted);
-      }
-
-      .select-wrap {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      .select-wrap select {
-        flex: 1 1 auto;
-        padding: 7px 9px;
-        font: inherit;
-        font-size: 12px;
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid var(--line);
-        border-radius: 9px;
-        cursor: pointer;
-      }
-
-      .legend {
-        margin-top: 10px;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 4px 10px;
-        font-size: 11px;
-        color: var(--muted);
-      }
-
-      .legend span {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .swatch {
-        width: 10px;
-        height: 10px;
-        border-radius: 3px;
-        border: 1px solid rgba(36, 33, 28, 0.25);
-        flex: 0 0 auto;
-      }
-
-      #boot {
-        position: fixed;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        background: var(--bg);
-        font-size: 14px;
-        color: var(--muted);
-        transition: opacity 0.4s ease;
-      }
-
-      #boot.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      @media (max-width: 640px) {
-        .hud {
-          width: calc(100vw - 36px);
-          padding: 12px 14px;
-        }
-        .legend {
-          display: none;
-        }
-      }
-    </style>
+    <title>Robot 3D · Dal disegno al videogioco</title>
+    <link rel="stylesheet" href="./site.css" />
   </head>
   <body>
-    <canvas id="scene"></canvas>
+    <a class="skip-link" href="#robot" data-i18n="skip">Salta al contenuto</a>
 
-    <section class="hud" aria-label="Controlli del modello 3D">
-      <h1>Robot 3D</h1>
-      <p>
-        Ricostruzione del disegno a mano: testa a televisore, antenne a sfera, braccia a pinza
-        “C” in posizione V, torso blu con quadrante rosso e pannello a 4 pulsanti.
-        Geometria 100% procedurale (Three.js), nessuna texture.
-      </p>
+    <!-- ============================ HEADER ============================ -->
+    <header class="site-header">
+      <div class="site-shell-inner">
+        <a class="site-home" href="https://www.giacomel.info/" aria-label="Torna alla home">
+          giacomel.info
+        </a>
 
-      <div class="row">
-        <button id="btn-rotate" type="button">Rotazione</button>
-        <button id="btn-outline" type="button">Contorni</button>
-        <button id="btn-flat" type="button">Flat shading</button>
-        <button id="btn-reset" type="button">Reimposta</button>
+        <nav data-portfolio-nav aria-label="Navigazione principale">
+          <a href="#robot" data-i18n="nav.robot">Robot 3D</a>
+          <a href="#storia" data-i18n="nav.storia">Storia</a>
+          <a href="#comandi" data-i18n="nav.comandi">Comandi</a>
+          <a href="https://github.com/albertogiacomel/robot3d" rel="noopener">GitHub</a>
+        </nav>
+
+        <div class="site-actions">
+          <div class="site-languages" role="group" aria-label="Lingua">
+            <button type="button" data-lang="it" aria-pressed="true">IT</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+          <button
+            type="button"
+            class="site-icon-button"
+            id="theme-toggle"
+            aria-label="Cambia tema"
+            title="Tema chiaro / scuro"
+          >
+            <span aria-hidden="true" data-theme-icon>◐</span>
+          </button>
+        </div>
       </div>
+    </header>
 
-      <div class="row" style="margin-top: 7px">
-        <label class="select-wrap" for="view-select">
-          <span>Vista</span>
-          <select id="view-select">
-            <option value="front">Frontale</option>
-            <option value="hero">3/4</option>
-            <option value="side">Laterale</option>
-            <option value="back">Posteriore</option>
-            <option value="closeup">Primo piano testa</option>
-          </select>
-        </label>
-      </div>
+    <main>
+      <!-- ============================ HERO ============================ -->
+      <section id="robot" class="hero">
+        <div class="hero-copy">
+          <p class="site-eyebrow" data-i18n="hero.eyebrow">Esperimento Three.js · Geometria procedurale</p>
+          <h1 data-i18n="hero.title">Un disegno a mano diventa un videogioco</h1>
+          <p class="lead" data-i18n="hero.lead">
+            Il robot del foglio è ricostruito pezzo per pezzo con primitive 3D: nessuna mesh
+            importata, nessuna texture. Si muove nella scena, cammina, ride e sa afferrare la
+            scatola di cartone.
+          </p>
+          <div class="hero-actions">
+            <a class="site-button" href="#storia" data-i18n="hero.cta1">La storia</a>
+            <a class="site-button site-button-ghost" href="#comandi" data-i18n="hero.cta2">Comandi</a>
+            <a
+              class="site-button site-button-ghost"
+              href="https://github.com/albertogiacomel/robot3d"
+              rel="noopener"
+              data-i18n="hero.cta3">Codice su GitHub</a
+            >
+          </div>
+          <ul class="hero-stats">
+            <li><b>66</b><span data-i18n="stat.mesh">mesh procedurali</span></li>
+            <li><b>0</b><span data-i18n="stat.texture">texture</span></li>
+            <li><b>10</b><span data-i18n="stat.states">stati animati</span></li>
+          </ul>
+        </div>
 
-      <div class="legend" aria-hidden="true">
-        <span><i class="swatch" style="background:#8a8a8a"></i>Testa grigia</span>
-        <span><i class="swatch" style="background:#5e9ed7"></i>Torso blu</span>
-        <span><i class="swatch" style="background:#d24f4a"></i>Quadrante / pinze</span>
-        <span><i class="swatch" style="background:#cdc3e6"></i>Cosce lavanda</span>
-        <span><i class="swatch" style="background:#e8df87"></i>Tibia gialla</span>
-        <span><i class="swatch" style="background:#bdd08a"></i>Bandeggio verde</span>
-      </div>
+        <div class="stage">
+          <canvas id="scene"></canvas>
 
-      <div class="hint">
-        Trascina per ruotare · rotella per lo zoom · doppio click per resettare la vista<br />
-        <span id="stat-tri"></span>
-      </div>
-    </section>
+          <!-- HUD di controllo -->
+          <aside class="hud" aria-label="Controlli del modello 3D">
+            <div class="hud-head">
+              <b data-i18n="hud.title">Controlli</b>
+              <span class="status" role="status"
+                ><i class="dot" aria-hidden="true"></i><span id="state-label">In attesa</span></span
+              >
+            </div>
 
-    <div id="boot">Caricamento modello…</div>
+            <div class="hud-grid">
+              <button id="btn-laugh" type="button" data-i18n="hud.laugh">Ridere</button>
+              <button id="btn-wave" type="button" data-i18n="hud.wave">Saluta</button>
+              <button id="btn-grab" type="button" data-i18n="hud.grab">Scatola</button>
+              <button id="btn-demo" type="button" data-i18n="hud.demo">Demo</button>
+            </div>
+
+            <details class="hud-more">
+              <summary data-i18n="hud.more">Impostazioni</summary>
+              <div class="hud-grid">
+                <button id="btn-arms" type="button" data-i18n="hud.arms">Braccia V</button>
+                <button id="btn-cinema" type="button" data-i18n="hud.cinema">Cinema</button>
+                <button id="btn-rotate" type="button" data-i18n="hud.rotate">Rotazione</button>
+                <button id="btn-flat" type="button" data-i18n="hud.flat">Flat shading</button>
+                <button id="btn-audio" type="button" data-i18n="hud.audio">Audio</button>
+                <button id="btn-reset" type="button" data-i18n="hud.reset">Reimposta</button>
+              </div>
+              <label class="hud-field">
+                <span data-i18n="hud.view">Vista</span>
+                <select id="view-select">
+                  <option value="front" data-i18n="view.front">Frontale</option>
+                  <option value="hero" data-i18n="view.hero">3/4</option>
+                  <option value="side" data-i18n="view.side">Laterale</option>
+                  <option value="back" data-i18n="view.back">Posteriore</option>
+                  <option value="closeup" data-i18n="view.closeup">Primo piano testa</option>
+                </select>
+              </label>
+            </details>
+
+            <p class="hud-hint" data-i18n="hud.hint">WASD cammina · L ride · Spazio saluta · G scatola</p>
+            <p class="hud-stat" id="stat-tri"></p>
+          </aside>
+
+          <!-- D-pad touch -->
+          <nav class="dpad" aria-label="Comandi di movimento">
+            <button class="up" type="button" data-key="forward" aria-label="Avanti">▲</button>
+            <button class="left" type="button" data-key="left" aria-label="Sinistra">◀</button>
+            <button class="run" type="button" data-key="run" aria-label="Corri">▶▶</button>
+            <button class="right" type="button" data-key="right" aria-label="Destra">▶</button>
+            <button class="down" type="button" data-key="back" aria-label="Indietro">▼</button>
+          </nav>
+        </div>
+      </section>
+
+      <!-- ============================ STORIA ============================ -->
+      <section id="storia" class="story">
+        <header class="section-head">
+          <p class="site-eyebrow" data-i18n="story.eyebrow">La spalla</p>
+          <h2 data-i18n="story.title">Dal foglio al videogioco</h2>
+          <p class="lead" data-i18n="story.lead">
+            Quattro passaggi, ogniuno verificato nel browser: il disegno, la geometria, il rig
+            animato e infine il gioco con controller, scatola e regia cinematografica.
+          </p>
+        </header>
+
+        <ol class="timeline">
+          <li class="timeline-item">
+            <figure>
+              <picture>
+                <source srcset="./assets/drawing-original.webp" type="image/webp" />
+                <img
+                  src="./assets/drawing-original-900.png"
+                  alt="Disegno a mano del robot con braccia aperte a V, matita e pastello"
+                  width="900"
+                  height="1273"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption data-i18n="story.fig1">
+                Il foglio di partenza: matita a pastello, contorni tratteggiati e colori a
+                tempera.
+              </figcaption>
+            </figure>
+            <div class="timeline-body">
+              <span class="step">01</span>
+              <h3 data-i18n="story.h1">Il disegno</h3>
+              <p data-i18n="story.p1">
+                Testa a televisore, antenne a sfera, braccia aperte a V con pinze a “C”, torso blu
+                con quadrante rosso e pannello a quattro pulsanti, cosce lavanda e tibie a bande.
+                Ogni elemento del foglio è diventato una specifica di costruzione.
+              </p>
+              <ul class="tag-list">
+                <li data-i18n="story.t1">proporzioni</li>
+                <li data-i18n="story.t2">palette</li>
+                <li data-i18n="story.t3">articolazioni</li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="timeline-item">
+            <figure>
+              <img
+                src="./assets/story-geometry.png"
+                alt="Il robot 3D ricostruito con primitive Three.js"
+                width="1280"
+                height="900"
+                loading="lazy"
+              />
+              <figcaption data-i18n="story.fig2">
+                La ricostruzione: 66 mesh generate a runtime, contorni neri in stile disegno.
+              </figcaption>
+            </figure>
+            <div class="timeline-body">
+              <span class="step">02</span>
+              <h3 data-i18n="story.h2">La geometria</h3>
+              <p data-i18n="story.p2">
+                <code>RoundedBoxGeometry</code> per cranio e arti, cilindri per giunti e collo,
+                sfere per occhi e ginocchi, un <code>TorusGeometry</code> ad arco per la pinza “C”
+                e un’<code>ExtrudeGeometry</code> per il profilo trapezoidale del torso. I
+                contorni sono una seconda passata di mesh con <code>side: BackSide</code>.
+              </p>
+            </div>
+          </li>
+
+          <li class="timeline-item">
+            <figure>
+              <img
+                src="./assets/story-rig.png"
+                alt="Il robot durante il ciclo di camminata"
+                width="1280"
+                height="900"
+                loading="lazy"
+              />
+              <figcaption data-i18n="story.fig3">
+                Il rig: busto, gomiti e ginocchi come pivot, IK a due ossa per le braccia.
+              </figcaption>
+            </figure>
+            <div class="timeline-body">
+              <span class="step">03</span>
+              <h3 data-i18n="story.h3">Il rig animato</h3>
+              <p data-i18n="story.p3">
+                Dieci stati (idle, walk, laugh, wave, approach, reach, grab, lift, carry, place)
+                pilotati da una macchina a stati a passo fisso a 60 Hz. Le braccia usano
+                l’IK analitica a due ossa per afferrare la scatola, il busto si inclina per
+                raggiungere il terra.
+              </p>
+            </div>
+          </li>
+
+          <li class="timeline-item">
+            <figure>
+              <img
+                src="./assets/story-game.png"
+                alt="Il robot che trasporta la scatola durante la demo"
+                width="1280"
+                height="900"
+                loading="lazy"
+              />
+              <figcaption data-i18n="story.fig4">
+                Il videogioco: muovimento libero, scatola da trasportare e regia cinematografica.
+              </figcaption>
+            </figure>
+            <div class="timeline-body">
+              <span class="step">04</span>
+              <h3 data-i18n="story.h4">Il videogioco</h3>
+              <p data-i18n="story.p4">
+                Tastiera, touch e gamepad alimentano lo stesso controller; la camera segue il robot
+                e, in modalità Cinema, cambia inquadratura in base allo stato (primo piano per la
+                risata, campo basso per la scatola). Il tutto gira a 60 fps senza asset esterni.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============================ COMANDI ============================ -->
+      <section id="comandi" class="commands">
+        <header class="section-head">
+          <p class="site-eyebrow" data-i18n="cmd.eyebrow">Controller</p>
+          <h2 data-i18n="cmd.title">Comandi</h2>
+        </header>
+        <div class="commands-grid">
+          <article class="card">
+            <h3 data-i18n="cmd.h1">Movimento</h3>
+            <dl>
+              <div><dt>W A S D / frecce</dt><dd data-i18n="cmd.d1">Cammina</dd></div>
+              <div><dt>Shift</dt><dd data-i18n="cmd.d2">Corri</dd></div>
+              <div><dt>Gamepad</dt><dd data-i18n="cmd.d3">Stick sinistro e d-pad</dd></div>
+              <div><dt>Trascina</dt><dd data-i18n="cmd.d4">Orbita la camera</dd></div>
+            </dl>
+          </article>
+          <article class="card">
+            <h3 data-i18n="cmd.h2">Animazioni</h3>
+            <dl>
+              <div><dt>L</dt><dd data-i18n="cmd.d5">Ride (i denti si deformano sullo schermo)</dd></div>
+              <div><dt>Spazio</dt><dd data-i18n="cmd.d6">Saluta</dd></div>
+              <div><dt>G</dt><dd data-i18n="cmd.d7">Prende o posa la scatola</dd></div>
+              <div><dt>R</dt><dd data-i18n="cmd.d8">Reset della scena</dd></div>
+            </dl>
+          </article>
+          <article class="card">
+            <h3 data-i18n="cmd.h3">Scena</h3>
+            <dl>
+              <div><dt>Demo</dt><dd data-i18n="cmd.d9">Cammina, ride e raccoglie la scatola</dd></div>
+              <div><dt>Cinema</dt><dd data-i18n="cmd.d10">Inquadrature guidate dallo stato</dd></div>
+              <div><dt>Braccia V</dt><dd data-i18n="cmd.d11">Riporta le braccia del disegno</dd></div>
+              <div><dt>Audio</dt><dd data-i18n="cmd.d12">Risata sintetizzata</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================ FOOTER ============================ -->
+    <footer class="site-footer">
+      <nav class="site-shell-inner" aria-label="Navigazione del piè di pagina">
+        <a href="https://www.giacomel.info/" data-site-home>giacomel.info</a>
+        <div class="site-privacy-links">
+          <a href="https://www.giacomel.info/#projects" data-i18n="footer.projects">Progetti</a>
+          <a href="https://github.com/albertogiacomel/robot3d" rel="noopener" data-i18n="footer.repo">
+            Repository
+          </a>
+        </div>
+      </nav>
+    </footer>
+
+    <div id="boot" class="boot">Caricamento modello…</div>
 
     <script type="importmap">
       {
@@ -237,17 +321,6 @@
       }
     </script>
     <script type="module" src="./robot.js"></script>
-    <script>
-      // Nasconde l'overlay di avvio quando il modulo ha montato la scena.
-      window.addEventListener('load', () => {
-        requestAnimationFrame(() => {
-          const boot = document.getElementById('boot');
-          if (boot) {
-            boot.classList.add('hidden');
-            setTimeout(() => boot.remove(), 500);
-          }
-        });
-      });
-    </script>
+    <script type="module" src="./site.js"></script>
   </body>
 </html>
