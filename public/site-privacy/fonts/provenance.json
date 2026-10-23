@@ -1,0 +1,22 @@
+{
+  "family": "Inter",
+  "license": "OFL-1.1",
+  "licenseSource": "https://github.com/google/fonts/blob/main/ofl/inter/OFL.txt",
+  "source": "Unmodified latin variable font emitted by website next/font/google Inter, Next.js 15.5.12; same bytes as homepage preload e4af272ccee01ff0-s.p.woff2",
+  "files": [
+    {
+      "path": "inter-latin.woff2",
+      "bytes": 48432,
+      "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4"
+    },
+    {
+      "path": "OFL.txt",
+      "bytes": 4376,
+      "sha256": "5dd548d31a85f756e01d63e00d7faf1e324103ed3e9102fcbbabf2cc2db6dd39"
+    }
+  ],
+  "licenseNormalization": {
+    "sourceSha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+    "changes": "trailing whitespace removed; license wording preserved"
+  }
+}

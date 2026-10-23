@@ -1,0 +1,46 @@
+/* Canonical theme and type tokens: homepage, blog, privacy and shared shell. */
+:root{
+    --site-background: 0 0% 100%;
+    --site-foreground: 222.2 84% 4.9%;
+    --site-card: 0 0% 100%;
+    --site-card-foreground: 222.2 84% 4.9%;
+    --site-popover: 0 0% 100%;
+    --site-popover-foreground: 222.2 84% 4.9%;
+    --site-primary: 221.2 83.2% 53.3%;
+    --site-primary-foreground: 210 40% 98%;
+    --site-secondary: 210 40% 96.1%;
+    --site-secondary-foreground: 222.2 47.4% 11.2%;
+    --site-muted: 210 40% 96.1%;
+    --site-muted-foreground: 215.4 16.3% 46.9%;
+    --site-accent: 210 40% 96.1%;
+    --site-accent-foreground: 222.2 47.4% 11.2%;
+    --site-destructive: 0 84.2% 60.2%;
+    --site-destructive-foreground: 210 40% 98%;
+    --site-border: 214.3 31.8% 91.4%;
+    --site-input: 214.3 31.8% 91.4%;
+    --site-ring: 221.2 83.2% 53.3%;
+    --site-radius: 0.5rem;
+  --site-font:"Giacomel Inter",system-ui,sans-serif;--site-text-sm:.875rem;--site-text-base:1rem;--site-text-lg:1.125rem;--site-text-title:clamp(2rem,4vw,3rem);--site-leading-base:1.5;--site-leading-copy:1.625;--site-leading-title:1.1;--site-bg:hsl(var(--site-background));--site-fg:hsl(var(--site-foreground));--site-muted:hsl(var(--site-muted-foreground));--site-line:hsl(var(--site-border));--site-soft:hsl(var(--site-secondary));--site-accent:hsl(var(--site-primary));--site-radius:8px;--site-width:87.5rem;--site-gutter:1.5rem;}
+.dark{
+    --site-background: 222.2 84% 4.9%;
+    --site-foreground: 210 40% 98%;
+    --site-card: 222.2 84% 4.9%;
+    --site-card-foreground: 210 40% 98%;
+    --site-popover: 222.2 84% 4.9%;
+    --site-popover-foreground: 210 40% 98%;
+    --site-primary: 217.2 91.2% 59.8%;
+    --site-primary-foreground: 222.2 47.4% 11.2%;
+    --site-secondary: 217.2 32.6% 17.5%;
+    --site-secondary-foreground: 210 40% 98%;
+    --site-muted: 217.2 32.6% 17.5%;
+    --site-muted-foreground: 215 20.2% 65.1%;
+    --site-accent: 217.2 32.6% 17.5%;
+    --site-accent-foreground: 210 40% 98%;
+    --site-destructive: 0 62.8% 30.6%;
+    --site-destructive-foreground: 210 40% 98%;
+    --site-border: 217.2 32.6% 17.5%;
+    --site-input: 217.2 32.6% 17.5%;
+    --site-ring: 224.3 76.3% 48%;
+  }
+
+html[data-site-profile=portfolio],html[data-site-profile=privacy]{--background:var(--site-background);--foreground:var(--site-foreground);--card:var(--site-card);--card-foreground:var(--site-card-foreground);--popover:var(--site-popover);--popover-foreground:var(--site-popover-foreground);--primary:var(--site-primary);--primary-foreground:var(--site-primary-foreground);--secondary:var(--site-secondary);--secondary-foreground:var(--site-secondary-foreground);--muted:var(--site-muted);--muted-foreground:var(--site-muted-foreground);--accent:var(--site-accent);--accent-foreground:var(--site-accent-foreground);--destructive:var(--site-destructive);--destructive-foreground:var(--site-destructive-foreground);--border:var(--site-border);--input:var(--site-input);--ring:var(--site-ring);--radius:var(--site-radius);}

@@ -1,0 +1,25 @@
+{
+  "name": "klaro",
+  "version": "0.7.21",
+  "repository": "https://github.com/kiprotect/klaro",
+  "license": "BSD-3-Clause",
+  "source_package": "https://registry.npmjs.org/klaro/-/klaro-0.7.21.tgz",
+  "source_integrity": "sha512-PbF23xYGPObhg2GL0yqskPqRTziv3RTwVi9QZiBEB/BVulS/e1fFprgRiW6f4utPjb61q/16fWgPwHuuXJZYRA==",
+  "files": [
+    {
+      "path": "klaro-no-css.js",
+      "bytes": 212401,
+      "sha256": "add6fa3b97d78700b67180edb2074df5c7217011b7e746a9c47fd31c23426d11"
+    },
+    {
+      "path": "klaro.min.css",
+      "bytes": 19607,
+      "sha256": "20ab584ad65b1273502a8524f72c343a3b707180b1ec67fd7756a5ee63c6af36"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1658,
+      "sha256": "77e99125636bef70b534cc86b6f890bf8b33b453d4a9402f3ff4b2cf26e7fa82"
+    }
+  ]
+}

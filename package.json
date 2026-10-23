@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "description": "Robot 3D: un disegno a mano diventa un videogioco (Three.js, geometria procedurale)",
   "scripts": {
     "start": "python -m http.server 8123",
-    "build": "node scripts/build-site.mjs",
+    "build": "node scripts/build-site.js",
     "check": "node --check robot.js && node --check robot-actions.js && node --check site.js",
+    "check:hygiene": "tsc -p tsconfig.hygiene.json && node --test scripts/check-repository-hygiene_test.ts && node scripts/check-repository-hygiene.ts",
     "verify": "node scripts/verify-actions.mjs",
     "capture": "node scripts/capture-story.mjs",
     "poses": "node scripts/capture-poses.mjs",
@@ -16,6 +20,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "puppeteer-core": "^25.15.0"
+    "@types/node": "20.19.43",
+    "puppeteer-core": "^25.15.0",
+    "typescript": "5.9.3"
   }
 }

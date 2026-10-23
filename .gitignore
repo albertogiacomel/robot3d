@@ -8,8 +8,8 @@ Thumbs.db
 # Output delle build statiche (Cloudflare Pages / GitHub Pages)
 dist/
 
-# Schermate di sviluppo (non versionate: rigenerabili con npm run capture)
-artifacts/poses/
-artifacts/demo/
-artifacts/site/
-artifacts/shadow-check/
+# Evidenze operative locali; il README descrive come rigenerarle.
+/artifacts/*
+!/artifacts/README.md
+.wrangler/
+.vercel/

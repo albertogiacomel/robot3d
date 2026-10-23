@@ -1,7 +1,7 @@
 /**
  * Assembla il sito statico in dist/ (output per Cloudflare Pages e GitHub Pages).
  *
- *   node scripts/build-site.mjs
+ *   node scripts/build-site.js
  */
 
 import { cp, mkdir, rm, writeFile, stat, readdir } from 'node:fs/promises';
@@ -40,8 +40,12 @@ for (const dir of DIRS) {
   await cp(src, join(DIST, dir), { recursive: true });
 }
 
+// Pinned canonical shell copied from public by the shared kit synchronizer.
+await cp(join(ROOT, 'public/site-privacy'), join(DIST, 'site-privacy'), { recursive: true });
+for (const file of ['privacy.html', 'ads.txt']) await cp(join(ROOT, 'public', file), join(DIST, file));
+
 // Nessun processed Jekyll/underscore da interpretare
-await writeFile(join(DIST, '.nojekyll'), '');
+await writeFile(join(DIST, '.nojekyll'), '', 'utf8');
 
 const bytes = await dirSize(DIST);
 console.log(`dist/ pronto — ${FILES.length} file + ${DIRS.length} cartelle, ${(bytes / 1024 / 1024).toFixed(2)} MB`);

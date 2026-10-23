@@ -20,16 +20,18 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Prepara il sito statico
-        run: |
-          mkdir -p _site
-          cp index.html robot.js robot-actions.js site.js site.css _site/
-          cp -r assets vendor _site/
-          printf '' > _site/.nojekyll
+        run: node scripts/build-site.js
 
       - name: Configura GitHub Pages
         uses: actions/configure-pages@v5
@@ -37,7 +39,8 @@ jobs:
       - name: Carica l'artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_site'
+          path: 'dist'
+          retention-days: 3
 
       - name: Deploy
         id: deployment

@@ -220,6 +220,7 @@ function refreshStateLabel() {
 
 function applyTheme() {
   document.documentElement.dataset.theme = theme;
+  document.documentElement.classList.toggle('dark', theme === 'dark');
   document.querySelector('[data-theme-icon]').textContent = theme === 'dark' ? '☀' : '◐';
   try {
     localStorage.setItem('robot3d-theme', theme);
@@ -270,3 +271,11 @@ window.addEventListener('load', () => {
 
 // Espone i token tema per robot.js
 window.__siteTheme = THEME;
+
+// The canonical site shell owns the language controls.
+window.addEventListener('sitelanguagechange', event => {
+  if (event.detail?.language === 'it' || event.detail?.language === 'en') {
+    lang = event.detail.language;
+    applyI18n();
+  }
+});
